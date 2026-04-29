@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  sessions     Session[]
+  authCodes    AuthCode[]
+  consents     Consent[]
+  refreshTokens RefreshToken[]
+}
+
+model Client {
+  id               String     @id @default(uuid())
+  clientId         String     @unique
+  clientSecretHash String     
+  name             String     
+  redirectUris     String[]   
+  createdAt        DateTime   @default(now())
+  authCodes        AuthCode[]
+  consents         Consent[]
+  refreshTokens RefreshToken[]
+}
+
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model AuthCode {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeChallenge String   
+  expiresAt     DateTime 
+  createdAt     DateTime @default(now())
+}
+
+model Consent {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  scopes    String[] 
+  createdAt DateTime @default(now())
+
+  @@unique([userId, clientId]) 
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique 
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  isRevoked Boolean  @default(false) 
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
