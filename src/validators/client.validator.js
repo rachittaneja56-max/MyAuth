@@ -8,3 +8,4 @@ export const clientRegistrationSchema = z.object({
     z.string().url("Every redirect URI must be a valid URL")
   ).min(1, "At least one redirect URI is required"),
 });
+
