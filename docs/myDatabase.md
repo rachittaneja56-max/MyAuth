@@ -7,16 +7,18 @@ This document is basically my notes on how I designed the database and why each 
   2. Database: PostgreSQL (Hosted on Neon.tech)
   3. ORM: Prisma 
 
-### 1. A Quick Note on Prisma v7
-If you are looking at my code, you might notice my schema.prisma file doesn't have the DATABASE_URL in it anymore. Prisma v7 changed this for security reasons!
+### 1. A Quick Note on Prisma v7 & Migrations
+If you are looking at my code, you might notice my `schema.prisma` file doesn't have the `DATABASE_URL` in it anymore. Prisma v7 changed this for security!
 
-Now:
+* **Config:** The URL is loaded safely from `prisma.config.ts`.
+* **Connection:** In the app, I use `@prisma/adapter-pg` to connect to the Neon pool.
 
-    1. The url is loaded safely from prisma.config.ts.
+### 2. Validation Layer (Zod)
+I added a strict validation layer before any data hits the database.
+* **Why?** To keep controllers clean.
+* **How?** I use **Zod** schemas. If a request has a missing name or a broken URL, the `validate` middleware throws an error immediately.
 
-    2. In index.js, I use the @prisma/adapter-pg to actually connect to Neon.
-
-### 2. Database Schema
+### 3. Database Schema
 
 1. User Table 
 
