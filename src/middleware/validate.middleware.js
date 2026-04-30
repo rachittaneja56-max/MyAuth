@@ -1,11 +1,24 @@
 import { BadRequestError } from '../utils/errors.js';
 
 export const validate = (schema) => (req, res, next) => {
-  try {
-    schema.parse(req.body);
-    next();
-  } catch (error) {
-    const errorMessages = error.errors.map((e) => e.message).join(', ');
-    next(new BadRequestError(errorMessages));
+  const result = schema.safeParse(req.body);
+  
+  if (!result.success) {
+    const errorMessages = result.error.issues.map((e) => e.message).join(', ');
+    return next(new BadRequestError(errorMessages));
   }
+  
+  req.body = result.data;
+  next();
+};
+
+export const validateQuery = (schema) => (req, res, next) => {
+  const result = schema.safeParse(req.query);
+  
+  if (!result.success) {
+    const errorMessages = result.error.issues.map((e) => e.message).join(', ');
+    return next(new BadRequestError(`Invalid query parameters: ${errorMessages}`));
+  }
+  Object.assign(req.query, result.data);
+  next();
 };
