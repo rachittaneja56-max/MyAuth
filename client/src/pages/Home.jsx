@@ -57,7 +57,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-        </div>
 
         <div className="mt-20">
           <h2 className="text-2xl font-bold text-white mb-6">How to Integrate (with PKCE)</h2>
