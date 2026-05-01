@@ -27,7 +27,7 @@ app.use('/api/auth', authRoutes)
 const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDistPath));
 
-app.get('*', (req, res, next) => {
+app.get(/^.*$/, (req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/.well-known')) {
     return next();
   }
