@@ -1,64 +1,154 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Demo App (Client)</title>
+    <title>SaaS Demo | Powered by Rachit's Auth</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0f172a',
+                        surface: '#1e293b',
+                        border: '#334155',
+                        brand: '#0ea5e9',
+                        brandHover: '#0284c7'
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-        .card { background: #1e293b; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); width: 100%; max-w: 600px; border: 1px solid #334155; }
-        h1 { margin-top: 0; font-size: 1.5rem; }
-        button { background: #0ea5e9; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 1rem; width: 100%; }
-        button:hover { background: #0284c7; }
-        pre { background: #000; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; color: #a5b4fc; }
-        .hidden { display: none; }
-        .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; margin-bottom: 5px; font-size: 0.875rem; color: #94a3b8; }
-        .input-group input { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: white; box-sizing: border-box; }
-        .token-box { background: #000; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; color: #a5b4fc; margin-bottom: 10px; border: 1px solid #334155;}
-        .token-header { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 5px; font-weight: 600; }
-        .profile-card { display: flex; align-items: center; gap: 15px; background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 20px;}
-        .avatar { width: 50px; height: 50px; background: #0ea5e9; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; color: white; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
     </style>
 </head>
-<body>
+<body class="bg-primary text-slate-200 min-h-screen flex flex-col selection:bg-brand selection:text-white">
 
-    <div class="card" id="login-card">
-        <h1>Welcome to Demo App</h1>
-        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 20px;">
-            This is a completely separate frontend app that uses your deployed <strong>auth.rachittaneja.in</strong> service to log users in!
-        </p>
-
-        <div class="input-group">
-            <label>Your Client ID (Get this from auth.rachittaneja.in/register-app)</label>
-            <input type="text" id="clientId" placeholder="Enter Client ID">
+    <!-- Navbar -->
+    <nav class="border-b border-border bg-surface/50 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand to-blue-600 flex items-center justify-center font-bold text-white shadow-lg shadow-brand/20">
+                    D
+                </div>
+                <span class="font-semibold text-white tracking-tight text-lg">DemoApp</span>
+            </div>
+            <div class="flex items-center gap-4 text-sm font-medium">
+                <a href="#" class="text-slate-400 hover:text-white transition-colors">Documentation</a>
+                <a href="https://auth.rachittaneja.in" target="_blank" class="text-brand hover:text-brandHover transition-colors flex items-center gap-1">
+                    Powered by Rachit's Auth
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                </a>
+            </div>
         </div>
-        <div class="input-group">
-            <label>Your Client Secret</label>
-            <input type="password" id="clientSecret" placeholder="Enter Client Secret">
-        </div>
+    </nav>
 
-        <button onclick="login()">Log In with Rachit's Auth</button>
-    </div>
+    <!-- Main Content -->
+    <main class="flex-grow flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        <!-- Background Glow -->
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-brand/10 rounded-full blur-[100px] pointer-events-none"></div>
 
-    <div class="card hidden" id="result-card">
-        <h1>🎉 Successfully Logged In!</h1>
-        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 20px;">We successfully exchanged the PKCE auth code for these real JWT tokens:</p>
-        
-        <div id="profile-container" class="hidden profile-card">
-            <div class="avatar" id="avatar-letter">?</div>
-            <div>
-                <h3 id="profile-name" style="margin: 0; font-size: 1.1rem; color: white;"></h3>
-                <p id="profile-email" style="margin: 5px 0 0 0; font-size: 0.85rem; color: #94a3b8;"></p>
+        <!-- STATE 1: LOGIN -->
+        <div id="login-state" class="w-full max-w-md relative z-10">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-white mb-3 tracking-tight">Welcome to DemoApp</h1>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    This is an external application demonstrating a secure OAuth 2.0 PKCE flow.
+                </p>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-8 shadow-2xl">
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-semibold tracking-wide text-slate-400 uppercase mb-2">Client ID</label>
+                        <input type="text" id="clientId" placeholder="Enter your Client ID" 
+                            class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-all">
+                        <p class="text-[11px] text-slate-500 mt-2">Get this by registering at auth.rachittaneja.in/register-app</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold tracking-wide text-slate-400 uppercase mb-2">Client Secret</label>
+                        <input type="password" id="clientSecret" placeholder="••••••••••••••••" 
+                            class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-all">
+                    </div>
+
+                    <div class="pt-2">
+                        <button onclick="login()" class="w-full bg-brand hover:bg-brandHover text-white font-medium py-3 rounded-lg shadow-lg shadow-brand/25 transition-all flex justify-center items-center gap-2 group">
+                            Continue with Rachit's Auth
+                            <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div id="tokens-container">
-            <pre id="tokens" class="token-box">Exchanging code for tokens...\nWait...</pre>
+        <!-- STATE 2: DASHBOARD -->
+        <div id="dashboard-state" class="w-full max-w-4xl relative z-10 hidden">
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h1 class="text-3xl font-bold text-white mb-2 tracking-tight">Your Dashboard</h1>
+                    <p class="text-emerald-400 text-sm flex items-center gap-2 font-medium">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                        PKCE OAuth Flow Successful
+                    </p>
+                </div>
+                <button onclick="logout()" class="px-4 py-2 border border-slate-700 hover:bg-slate-800 text-slate-300 text-sm font-medium rounded-lg transition-colors">
+                    Sign Out
+                </button>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- User Profile Card -->
+                <div class="glass-panel rounded-2xl p-6 md:col-span-1 h-fit">
+                    <h2 class="text-xs font-semibold tracking-wide text-slate-400 uppercase mb-6">Authenticated User</h2>
+                    <div class="flex flex-col items-center text-center">
+                        <div id="avatar-circle" class="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-brand flex items-center justify-center text-3xl font-bold text-white shadow-lg mb-4 ring-4 ring-slate-800">
+                            ?
+                        </div>
+                        <h3 id="profile-name" class="text-xl font-bold text-white"></h3>
+                        <p id="profile-email" class="text-slate-400 text-sm mt-1 mb-6"></p>
+                        
+                        <div class="w-full pt-6 border-t border-slate-700/50 flex justify-between items-center text-sm">
+                            <span class="text-slate-500">Status</span>
+                            <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded text-xs font-medium border border-emerald-500/20">Active</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tokens Section -->
+                <div class="md:col-span-2 space-y-6">
+                    <div class="glass-panel rounded-2xl p-6">
+                        <h2 class="text-xs font-semibold tracking-wide text-slate-400 uppercase mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                            ID Token (Decoded payload)
+                        </h2>
+                        <div class="bg-black/50 rounded-xl border border-slate-800 p-4 overflow-x-auto">
+                            <pre id="id-token-payload" class="text-[13px] text-emerald-400 font-mono leading-relaxed">Loading...</pre>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel rounded-2xl p-6">
+                        <h2 class="text-xs font-semibold tracking-wide text-slate-400 uppercase mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                            Raw Access Token
+                        </h2>
+                        <div class="bg-black/50 rounded-xl border border-slate-800 p-4">
+                            <p id="access-token-raw" class="text-[13px] text-slate-300 font-mono break-all leading-relaxed">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        
-        <button onclick="logout()" style="background: #ef4444; margin-top: 15px;">Log Out / Start Over</button>
-    </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-6 text-center text-sm text-slate-500 border-t border-border mt-auto">
+        <p>OAuth 2.0 PKCE implementation built for Rachit's Auth.</p>
+    </footer>
 
     <script>
         const AUTH_SERVER = 'https://auth.rachittaneja.in';
@@ -82,8 +172,8 @@
         }
 
         async function login() {
-            const clientId = document.getElementById('clientId').value;
-            const clientSecret = document.getElementById('clientSecret').value;
+            const clientId = document.getElementById('clientId').value.trim();
+            const clientSecret = document.getElementById('clientSecret').value.trim();
 
             if (!clientId || !clientSecret) {
                 alert("Please enter both Client ID and Client Secret!");
@@ -113,9 +203,9 @@
             const code = params.get('code');
             
             if (code) {
-                document.getElementById('login-card').classList.add('hidden');
-                document.getElementById('result-card').classList.remove('hidden');
-                document.getElementById('tokens').textContent = "Exchanging code for tokens...\nWait...";
+                // Switch UI states
+                document.getElementById('login-state').classList.add('hidden');
+                document.getElementById('dashboard-state').classList.remove('hidden');
 
                 const codeVerifier = localStorage.getItem('pkce_verifier');
                 const clientId = localStorage.getItem('demo_client_id');
@@ -141,25 +231,23 @@
                         throw new Error(data.message || 'Token exchange failed');
                     }
 
+                    // Parse the ID Token
                     const idTokenParts = data.id_token.split('.');
                     const payload = JSON.parse(atob(idTokenParts[1]));
 
-                    document.getElementById('profile-container').classList.remove('hidden');
-                    document.getElementById('profile-name').textContent = payload.name || 'User';
-                    document.getElementById('profile-email').textContent = payload.email || '';
-                    document.getElementById('avatar-letter').textContent = (payload.name || payload.email || '?').charAt(0).toUpperCase();
+                    // Populate UI
+                    document.getElementById('profile-name').textContent = payload.name || 'Anonymous User';
+                    document.getElementById('profile-email').textContent = payload.email || 'No email provided';
+                    document.getElementById('avatar-circle').textContent = (payload.name || payload.email || '?').charAt(0).toUpperCase();
                     
-                    document.getElementById('tokens-container').innerHTML = `
-                        <div class="token-header">ID Token Payload (Decoded)</div>
-                        <pre class="token-box" style="color: #34d399">${JSON.stringify(payload, null, 2)}</pre>
-                        
-                        <div class="token-header">Access Token (Raw)</div>
-                        <pre class="token-box" style="word-break: break-all; white-space: pre-wrap;">${data.access_token}</pre>
-                    `;
+                    document.getElementById('id-token-payload').textContent = JSON.stringify(payload, null, 2);
+                    document.getElementById('access-token-raw').textContent = data.access_token;
                     
                     window.history.replaceState({}, document.title, window.location.pathname);
                 } catch (error) {
-                    document.getElementById('tokens-container').innerHTML = `<pre class="token-box" style="color: #ef4444">Error: ${error.message}</pre>`;
+                    document.getElementById('id-token-payload').textContent = "Error: " + error.message;
+                    document.getElementById('id-token-payload').classList.replace('text-emerald-400', 'text-red-400');
+                    document.getElementById('access-token-raw').textContent = "Failed to fetch";
                 }
             }
         }
