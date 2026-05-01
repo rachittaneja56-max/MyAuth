@@ -6,9 +6,9 @@
   "scripts": {
     "generate-keys": "node scripts/generate-keys.js",
     "build:client": "cd client && npm install && npm run build",
-    "dev": "npm run generate-keys && nodemon src/app.js",
-    "start": "node src/app.js",
-    "build": "npm run build:client"
+    "dev": "npm run generate-keys && nodemon index.js",
+    "start": "npm run generate-keys && node index.js",
+    "build": "npx prisma generate && npm run build:client"
   },
   "keywords": [],
   "author": "",
