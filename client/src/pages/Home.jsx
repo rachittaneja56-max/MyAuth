@@ -57,6 +57,54 @@ export default function Home() {
             </div>
           </div>
         </div>
+        </div>
+
+        <div className="mt-20">
+          <h2 className="text-2xl font-bold text-white mb-6">How to Integrate (with PKCE)</h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="bg-surface border border-border rounded-2xl p-6">
+              <div className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center font-bold mb-4">1</div>
+              <h3 className="text-lg font-semibold text-white mb-2">Register App</h3>
+              <p className="text-muted text-sm mb-4">
+                Register your external client application. You will receive a <code className="text-white">client_id</code> and <code className="text-white">client_secret</code>.
+              </p>
+            </div>
+            
+            <div className="bg-surface border border-border rounded-2xl p-6">
+              <div className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center font-bold mb-4">2</div>
+              <h3 className="text-lg font-semibold text-white mb-2">Request Authorization</h3>
+              <p className="text-muted text-sm mb-4">
+                Generate a random <code className="text-white">code_verifier</code> and its SHA-256 hash (<code className="text-white">code_challenge</code>). Redirect the user:
+              </p>
+              <pre className="bg-black/50 p-3 rounded-lg text-xs text-muted overflow-x-auto font-mono">
+{`GET /api/auth/authorize?
+client_id=...&
+redirect_uri=...&
+response_type=code&
+code_challenge=...&
+code_challenge_method=S256`}
+              </pre>
+            </div>
+
+            <div className="bg-surface border border-border rounded-2xl p-6">
+              <div className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center font-bold mb-4">3</div>
+              <h3 className="text-lg font-semibold text-white mb-2">Exchange Tokens</h3>
+              <p className="text-muted text-sm mb-4">
+                Receive the auth code and exchange it for JWTs by sending the original unhashed verifier to prove your identity:
+              </p>
+              <pre className="bg-black/50 p-3 rounded-lg text-xs text-muted overflow-x-auto font-mono">
+{`POST /api/auth/token
+{
+  "client_id": "...",
+  "client_secret": "...",
+  "grant_type": "authorization_code",
+  "code": "...",
+  "code_verifier": "..."
+}`}
+              </pre>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
