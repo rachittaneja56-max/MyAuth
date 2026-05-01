@@ -24,9 +24,10 @@ export const authorizeClient = async (req, res) => {
     const sessionId = req.cookies?.sessionId;
 
     if (!sessionId) {
-        const loginUrl = new URL(`${req.protocol}://${req.get('host')}/login`);
-        loginUrl.search = new URLSearchParams(req.query).toString();  //to get queries from url itself
-        return res.redirect(302, loginUrl.toString());
+    const clientOrigin = process.env.CLIENT_ORIGIN || `${req.protocol}://${req.get('host')}`;
+    const loginUrl = new URL(`${clientOrigin}/login`);
+    loginUrl.search = new URLSearchParams(req.query).toString();
+    return res.redirect(302, loginUrl.toString());
     }
 
     throw new BadRequestError('Active session flow pending implementation', 'NOT_IMPLEMENTED');
@@ -79,7 +80,7 @@ export const loginUser = async (req, res) => {
     res.cookie('sessionId', session.id, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',  // to allow single sign on(allows cookie to travel with top level browser redirects)
+        sameSite: 'lax',
         expires: sessionExpiry
     });
     if (!client_id) {
@@ -89,7 +90,8 @@ export const loginUser = async (req, res) => {
             redirectUrl: '/dashboard'
         });
     }
-    const consentUrl = new URL(`${req.protocol}://${req.get('host')}/consent`);
+    const clientOrigin = process.env.CLIENT_ORIGIN || `${req.protocol}://${req.get('host')}`;
+    const consentUrl = new URL(`${clientOrigin}/consent`);
     const params = { client_id, redirect_uri, response_type, code_challenge, code_challenge_method };
     if (state) params.state = state;
     consentUrl.search = new URLSearchParams(params).toString();
@@ -145,16 +147,14 @@ try {
 export const exchangeToken = async (req, res) => {
   const { client_id, client_secret, grant_type } = req.body;
 
-  // 1. Verify Client Credentials (Required for BOTH flows)
+
   const client = await prisma.client.findUnique({ where: { clientId: client_id } });
   if (!client) throw new UnauthorizedError('Invalid client credentials', 'INVALID_CLIENT');
 
   const isClientValid = await bcrypt.compare(client_secret, client.clientSecretHash);
   if (!isClientValid) throw new UnauthorizedError('Invalid client credentials', 'INVALID_CLIENT');
 
-  // ==========================================
-  // BRANCH A: Authorization Code Flow
-  // ==========================================
+
   if (grant_type === 'authorization_code') {
     const { code, redirect_uri, code_verifier } = req.body;
 
@@ -167,7 +167,7 @@ export const exchangeToken = async (req, res) => {
       throw new BadRequestError('Invalid or expired authorization code', 'INVALID_GRANT');
     }
 
-    // PKCE Math
+
     const hashedVerifier = crypto.createHash('sha256').update(code_verifier).digest('base64url'); 
     if (hashedVerifier !== authCodeRecord.codeChallenge) {
       await prisma.authCode.delete({ where: { id: authCodeRecord.id } }); 
@@ -176,10 +176,10 @@ export const exchangeToken = async (req, res) => {
 
     await prisma.authCode.delete({ where: { id: authCodeRecord.id } });
 
-    // Mint Tokens
+    const issuer = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     const tokenPayload = { sub: authCodeRecord.userId, email: authCodeRecord.user.email, name: authCodeRecord.user.name };
-    const idToken = jwt.sign(tokenPayload, privateKey, { algorithm: 'RS256', expiresIn: '1h', audience: client_id, issuer: `http://localhost:${process.env.PORT || 3000}` });
-    const accessToken = jwt.sign({ sub: authCodeRecord.userId }, privateKey, { algorithm: 'RS256', expiresIn: '15m', audience: client_id, issuer: `http://localhost:${process.env.PORT || 3000}` });
+    const idToken = jwt.sign(tokenPayload, privateKey, { algorithm: 'RS256', expiresIn: '1h', audience: client_id, issuer });
+    const accessToken = jwt.sign({ sub: authCodeRecord.userId }, privateKey, { algorithm: 'RS256', expiresIn: '15m', audience: client_id, issuer });
     
     const refreshTokenString = crypto.randomBytes(40).toString('hex');
     const refreshExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); 
@@ -202,9 +202,7 @@ export const exchangeToken = async (req, res) => {
     });
   }
 
-  // ==========================================
-  // BRANCH B: Refresh Token Flow
-  // ==========================================
+
   if (grant_type === 'refresh_token') {
     const { refresh_token } = req.body;
 
@@ -217,11 +215,12 @@ export const exchangeToken = async (req, res) => {
       throw new UnauthorizedError('Invalid, expired, or revoked refresh token', 'INVALID_GRANT');
     }
 
+    const issuer = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     const newAccessToken = jwt.sign({ sub: dbToken.userId }, privateKey, {
       algorithm: 'RS256',
       expiresIn: '15m',
       audience: client_id,
-      issuer: `http://localhost:${process.env.PORT || 3000}`
+      issuer
     });
 
     return res.status(200).json({

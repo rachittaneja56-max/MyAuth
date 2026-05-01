@@ -5,8 +5,10 @@
   "main": "index.js",
   "scripts": {
     "generate-keys": "node scripts/generate-keys.js",
-    "dev": "npm run generate-keys && nodemon src/server.js",
-    "start": "node src/server.js"
+    "build:client": "cd client && npm install && npm run build",
+    "dev": "npm run generate-keys && nodemon src/app.js",
+    "start": "node src/app.js",
+    "build": "npm run build:client"
   },
   "keywords": [],
   "author": "",

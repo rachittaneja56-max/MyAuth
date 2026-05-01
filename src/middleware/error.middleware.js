@@ -18,7 +18,7 @@ export const errorHandler = (err, req, res, next) => {
     error: {
       code: code,
       message: message,
-      stack: process.env.NODE_ENV === "development" ? err.stack : undefined, // to get the error locally on my system
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
     }
   });
 };
