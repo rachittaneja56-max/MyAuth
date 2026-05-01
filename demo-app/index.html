@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SaaS Demo | Powered by Rachit's Auth</title>
+    <title>demo.html</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -28,7 +28,6 @@
 </head>
 <body class="bg-primary text-slate-200 min-h-screen flex flex-col selection:bg-brand selection:text-white">
 
-    <!-- Navbar -->
     <nav class="border-b border-border bg-surface/50 backdrop-blur-md sticky top-0 z-50">
         <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -38,7 +37,6 @@
                 <span class="font-semibold text-white tracking-tight text-lg">DemoApp</span>
             </div>
             <div class="flex items-center gap-4 text-sm font-medium">
-                <a href="#" class="text-slate-400 hover:text-white transition-colors">Documentation</a>
                 <a href="https://auth.rachittaneja.in" target="_blank" class="text-brand hover:text-brandHover transition-colors flex items-center gap-1">
                     Powered by Rachit's Auth
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
@@ -47,12 +45,9 @@
         </div>
     </nav>
 
-    <!-- Main Content -->
     <main class="flex-grow flex flex-col items-center justify-center p-6 relative overflow-hidden">
-        <!-- Background Glow -->
         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-brand/10 rounded-full blur-[100px] pointer-events-none"></div>
 
-        <!-- STATE 1: LOGIN -->
         <div id="login-state" class="w-full max-w-md relative z-10">
             <div class="text-center mb-8">
                 <h1 class="text-3xl font-bold text-white mb-3 tracking-tight">Welcome to DemoApp</h1>
@@ -86,7 +81,6 @@
             </div>
         </div>
 
-        <!-- STATE 2: DASHBOARD -->
         <div id="dashboard-state" class="w-full max-w-4xl relative z-10 hidden">
             <div class="flex items-center justify-between mb-8">
                 <div>
@@ -102,7 +96,6 @@
             </div>
 
             <div class="grid md:grid-cols-3 gap-6">
-                <!-- User Profile Card -->
                 <div class="glass-panel rounded-2xl p-6 md:col-span-1 h-fit">
                     <h2 class="text-xs font-semibold tracking-wide text-slate-400 uppercase mb-6">Authenticated User</h2>
                     <div class="flex flex-col items-center text-center">
@@ -119,7 +112,6 @@
                     </div>
                 </div>
 
-                <!-- Tokens Section -->
                 <div class="md:col-span-2 space-y-6">
                     <div class="glass-panel rounded-2xl p-6">
                         <h2 class="text-xs font-semibold tracking-wide text-slate-400 uppercase mb-4 flex items-center gap-2">
@@ -145,7 +137,6 @@
         </div>
     </main>
 
-    <!-- Footer -->
     <footer class="py-6 text-center text-sm text-slate-500 border-t border-border mt-auto">
         <p>OAuth 2.0 PKCE implementation built for Rachit's Auth.</p>
     </footer>
@@ -203,7 +194,6 @@
             const code = params.get('code');
             
             if (code) {
-                // Switch UI states
                 document.getElementById('login-state').classList.add('hidden');
                 document.getElementById('dashboard-state').classList.remove('hidden');
 
@@ -231,11 +221,9 @@
                         throw new Error(data.message || 'Token exchange failed');
                     }
 
-                    // Parse the ID Token
                     const idTokenParts = data.id_token.split('.');
                     const payload = JSON.parse(atob(idTokenParts[1]));
 
-                    // Populate UI
                     document.getElementById('profile-name').textContent = payload.name || 'Anonymous User';
                     document.getElementById('profile-email').textContent = payload.email || 'No email provided';
                     document.getElementById('avatar-circle').textContent = (payload.name || payload.email || '?').charAt(0).toUpperCase();
