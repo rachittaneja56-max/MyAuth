@@ -27,3 +27,13 @@ export const loginSchema = z.object({
   code_challenge_method: z.string().optional(),
   state: z.string().optional(),
 });
+
+export const consentSchema = z.object({
+  client_id: z.string({ required_error: "client_id is required" }),
+  redirect_uri: z.string().url("redirect_uri must be a valid URL"),
+  response_type: z.literal('code'),
+  code_challenge: z.string({ required_error: "code_challenge is required" }),
+  code_challenge_method: z.string().default('S256'),
+  state: z.string().optional(),
+  consent_given: z.boolean({ required_error: "consent_given must be true or false" }) // True if they clicked "Allow"
+});

@@ -1,7 +1,7 @@
 import { prisma } from '../config/db.js';
 import { BadRequestError, UnauthorizedError } from '../utils/errors.js';
 import bcrypt from 'bcrypt';
-
+import crypto from 'crypto';
 export const authorizeClient = async (req, res) => {
     const { client_id, redirect_uri } = req.query;
 
@@ -99,4 +99,55 @@ export const loginUser = async (req, res) => {
         message: 'Login successful, redirecting to consent...',
         redirectUrl: consentUrl.toString()
     });
+};
+
+export const submitConsent = async (req, res) => {
+  const { client_id, redirect_uri, response_type, code_challenge, code_challenge_method, state, consent_given } = req.body;
+
+  const sessionId = req.cookies?.sessionId;
+  if (!sessionId) {
+    throw new UnauthorizedError('Session expired or missing. Please log in again.', 'UNAUTHORIZED');
+  }
+
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+  });
+
+  if (!session || session.expiresAt < new Date()) {
+    throw new UnauthorizedError('Session expired or invalid.', 'UNAUTHORIZED');
+  }
+
+  if (!consent_given) {
+    const denyUrl = new URL(redirect_uri);
+    denyUrl.searchParams.append('error', 'access_denied');
+    if (state) denyUrl.searchParams.append('state', state);
+    
+    return res.status(200).json({ 
+      success: true,
+      message: 'User denied access.',
+      redirectUrl: denyUrl.toString() 
+    });
+  }
+  const authCode = crypto.randomBytes(32).toString('hex');
+  const codeExpiry = new Date(Date.now() + 5 * 60 * 1000); 
+
+  await prisma.authCode.create({
+    data: {
+      code: authCode,
+      clientId: client_id,
+      userId: session.userId,
+      codeChallenge: code_challenge, 
+      expiresAt: codeExpiry
+    }
+  });
+
+  const finalRedirectUrl = new URL(redirect_uri);
+  finalRedirectUrl.searchParams.append('code', authCode);
+  if (state) finalRedirectUrl.searchParams.append('state', state);
+
+  return res.status(200).json({
+    success: true,
+    message: 'Consent granted. Redirecting to client...',
+    redirectUrl: finalRedirectUrl.toString()
+  });
 };
