@@ -1,5 +1,8 @@
 import { prisma } from '../config/db.js';
 import { BadRequestError, UnauthorizedError } from '../utils/errors.js';
+import fs from 'fs';
+import path from 'path';
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 export const authorizeClient = async (req, res) => {
@@ -73,14 +76,12 @@ export const loginUser = async (req, res) => {
             expiresAt: sessionExpiry,
         }
     });
-
     res.cookie('sessionId', session.id, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',  // to allow single sign on(allows cookie to travel with top level browser redirects)
         expires: sessionExpiry
     });
-
     if (!client_id) {
         return res.status(200).json({
             success: true,
@@ -88,12 +89,10 @@ export const loginUser = async (req, res) => {
             redirectUrl: '/dashboard'
         });
     }
-
     const consentUrl = new URL(`${req.protocol}://${req.get('host')}/consent`);
     const params = { client_id, redirect_uri, response_type, code_challenge, code_challenge_method };
     if (state) params.state = state;
     consentUrl.search = new URLSearchParams(params).toString();
-    
     return res.status(200).json({
         success: true,
         message: 'Login successful, redirecting to consent...',
@@ -103,25 +102,20 @@ export const loginUser = async (req, res) => {
 
 export const submitConsent = async (req, res) => {
   const { client_id, redirect_uri, response_type, code_challenge, code_challenge_method, state, consent_given } = req.body;
-
   const sessionId = req.cookies?.sessionId;
   if (!sessionId) {
     throw new UnauthorizedError('Session expired or missing. Please log in again.', 'UNAUTHORIZED');
   }
-
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
   });
-
   if (!session || session.expiresAt < new Date()) {
     throw new UnauthorizedError('Session expired or invalid.', 'UNAUTHORIZED');
   }
-
   if (!consent_given) {
     const denyUrl = new URL(redirect_uri);
     denyUrl.searchParams.append('error', 'access_denied');
     if (state) denyUrl.searchParams.append('state', state);
-    
     return res.status(200).json({ 
       success: true,
       message: 'User denied access.',
@@ -130,7 +124,6 @@ export const submitConsent = async (req, res) => {
   }
   const authCode = crypto.randomBytes(32).toString('hex');
   const codeExpiry = new Date(Date.now() + 5 * 60 * 1000); 
-
   await prisma.authCode.create({
     data: {
       code: authCode,
@@ -140,14 +133,112 @@ export const submitConsent = async (req, res) => {
       expiresAt: codeExpiry
     }
   });
-
   const finalRedirectUrl = new URL(redirect_uri);
   finalRedirectUrl.searchParams.append('code', authCode);
   if (state) finalRedirectUrl.searchParams.append('state', state);
-
   return res.status(200).json({
     success: true,
     message: 'Consent granted. Redirecting to client...',
     redirectUrl: finalRedirectUrl.toString()
   });
+};
+
+const PRIVATE_KEY_PATH = path.resolve(process.cwd(), 'certs', 'private.pem');
+let privateKey;
+try {
+  privateKey = fs.readFileSync(PRIVATE_KEY_PATH, 'utf8');
+} catch (error) {
+  console.error("CRITICAL: private.pem not found in certs/ folder!");
+}
+
+export const exchangeToken = async (req, res) => {
+  const { client_id, client_secret, grant_type } = req.body;
+
+  // 1. Verify Client Credentials (Required for BOTH flows)
+  const client = await prisma.client.findUnique({ where: { clientId: client_id } });
+  if (!client) throw new UnauthorizedError('Invalid client credentials', 'INVALID_CLIENT');
+
+  const isClientValid = await bcrypt.compare(client_secret, client.clientSecretHash);
+  if (!isClientValid) throw new UnauthorizedError('Invalid client credentials', 'INVALID_CLIENT');
+
+  // ==========================================
+  // BRANCH A: Authorization Code Flow
+  // ==========================================
+  if (grant_type === 'authorization_code') {
+    const { code, redirect_uri, code_verifier } = req.body;
+
+    const authCodeRecord = await prisma.authCode.findUnique({
+      where: { code },
+      include: { user: true } 
+    });
+
+    if (!authCodeRecord || authCodeRecord.expiresAt < new Date()) {
+      throw new BadRequestError('Invalid or expired authorization code', 'INVALID_GRANT');
+    }
+
+    // PKCE Math
+    const hashedVerifier = crypto.createHash('sha256').update(code_verifier).digest('base64url'); 
+    if (hashedVerifier !== authCodeRecord.codeChallenge) {
+      await prisma.authCode.delete({ where: { id: authCodeRecord.id } }); 
+      throw new BadRequestError('PKCE verification failed.', 'INVALID_GRANT');
+    }
+
+    await prisma.authCode.delete({ where: { id: authCodeRecord.id } });
+
+    // Mint Tokens
+    const tokenPayload = { sub: authCodeRecord.userId, email: authCodeRecord.user.email, name: authCodeRecord.user.name };
+    const idToken = jwt.sign(tokenPayload, privateKey, { algorithm: 'RS256', expiresIn: '1h', audience: client_id, issuer: `http://localhost:${process.env.PORT || 3000}` });
+    const accessToken = jwt.sign({ sub: authCodeRecord.userId }, privateKey, { algorithm: 'RS256', expiresIn: '15m', audience: client_id, issuer: `http://localhost:${process.env.PORT || 3000}` });
+    
+    const refreshTokenString = crypto.randomBytes(40).toString('hex');
+    const refreshExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); 
+
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshTokenString,
+        userId: authCodeRecord.userId,
+        clientId: client_id,
+        expiresAt: refreshExpiry,
+      }
+    });
+
+    return res.status(200).json({
+      access_token: accessToken,
+      token_type: 'Bearer',
+      expires_in: 900, 
+      refresh_token: refreshTokenString, 
+      id_token: idToken
+    });
+  }
+
+  // ==========================================
+  // BRANCH B: Refresh Token Flow
+  // ==========================================
+  if (grant_type === 'refresh_token') {
+    const { refresh_token } = req.body;
+
+    const dbToken = await prisma.refreshToken.findUnique({
+      where: { token: refresh_token },
+      include: { user: true }
+    });
+
+    if (!dbToken || dbToken.isRevoked || dbToken.expiresAt < new Date()) {
+      throw new UnauthorizedError('Invalid, expired, or revoked refresh token', 'INVALID_GRANT');
+    }
+
+    const newAccessToken = jwt.sign({ sub: dbToken.userId }, privateKey, {
+      algorithm: 'RS256',
+      expiresIn: '15m',
+      audience: client_id,
+      issuer: `http://localhost:${process.env.PORT || 3000}`
+    });
+
+    return res.status(200).json({
+      access_token: newAccessToken,
+      token_type: 'Bearer',
+      expires_in: 900
+    });
+  }
+
+  throw new BadRequestError('Unsupported grant_type', 'UNSUPPORTED_GRANT_TYPE');
 };

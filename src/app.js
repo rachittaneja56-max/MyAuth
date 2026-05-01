@@ -13,7 +13,7 @@ app.use(cors());
 app.use(cookieParser())
 
 app.use('/api/clients', clientRoutes);
-app.use('/.well-known', discoveryRoutes)
+app.use('/', discoveryRoutes)
 app.use('/api/auth', authRoutes)
 
 app.use(errorHandler);

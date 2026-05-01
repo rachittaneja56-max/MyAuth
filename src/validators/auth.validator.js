@@ -35,5 +35,14 @@ export const consentSchema = z.object({
   code_challenge: z.string({ required_error: "code_challenge is required" }),
   code_challenge_method: z.string().default('S256'),
   state: z.string().optional(),
-  consent_given: z.boolean({ required_error: "consent_given must be true or false" }) // True if they clicked "Allow"
+  consent_given: z.boolean({ required_error: "consent_given must be true or false" }) 
+});
+
+export const tokenSchema = z.object({
+  client_id: z.string({ required_error: "client_id is required" }),
+  client_secret: z.string({ required_error: "client_secret is required" }), 
+  grant_type: z.literal('authorization_code'),
+  code: z.string({ required_error: "code is required" }),
+  redirect_uri: z.string().url(),
+  code_verifier: z.string({ required_error: "code_verifier is required for PKCE" }) 
 });
