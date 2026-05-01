@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "generate-keys": "node scripts/generate-keys.js",
-    "build:client": "cd client && npm install && npm run build",
+    "build:client": "cd client && npm install --include=dev && npm run build",
     "dev": "npm run generate-keys && nodemon index.js",
     "start": "npm run generate-keys && node index.js",
     "build": "npx prisma generate && npm run build:client"
