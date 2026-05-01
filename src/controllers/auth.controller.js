@@ -102,16 +102,7 @@ export const loginUser = async (req, res) => {
 
 export const submitConsent = async (req, res) => {
   const { client_id, redirect_uri, response_type, code_challenge, code_challenge_method, state, consent_given } = req.body;
-  const sessionId = req.cookies?.sessionId;
-  if (!sessionId) {
-    throw new UnauthorizedError('Session expired or missing. Please log in again.', 'UNAUTHORIZED');
-  }
-  const session = await prisma.session.findUnique({
-    where: { id: sessionId },
-  });
-  if (!session || session.expiresAt < new Date()) {
-    throw new UnauthorizedError('Session expired or invalid.', 'UNAUTHORIZED');
-  }
+  
   if (!consent_given) {
     const denyUrl = new URL(redirect_uri);
     denyUrl.searchParams.append('error', 'access_denied');
@@ -128,7 +119,7 @@ export const submitConsent = async (req, res) => {
     data: {
       code: authCode,
       clientId: client_id,
-      userId: session.userId,
+      userId: req.user.id,
       codeChallenge: code_challenge, 
       expiresAt: codeExpiry
     }
