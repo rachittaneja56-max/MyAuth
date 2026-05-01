@@ -63,6 +63,7 @@
                         <input type="text" id="clientId" placeholder="Enter your Client ID" 
                             class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-all">
                         <p class="text-[11px] text-slate-500 mt-2">Get this by registering at auth.rachittaneja.in/register-app</p>
+                        <p class="text-[12px] text-brand mt-2 font-semibold">Important: When registering, you MUST use this exact Redirect URI: <br/><span id="display-redirect-uri" class="text-white bg-slate-800 px-2 py-1 rounded select-all"></span></p>
                     </div>
                     
                     <div>
@@ -143,7 +144,10 @@
 
     <script>
         const AUTH_SERVER = 'https://auth.rachittaneja.in';
-        const REDIRECT_URI = window.location.origin; 
+        // Ensure REDIRECT_URI matches EXACTLY what you registered, including trailing slashes.
+        // window.location.origin does NOT include a trailing slash (e.g. 'http://localhost:8080').
+        // If you registered 'http://localhost:8080/', you need the trailing slash:
+        const REDIRECT_URI = window.location.origin + window.location.pathname; 
 
         function generateRandomString(length) {
             const array = new Uint32Array(Math.ceil(length / 2));
@@ -245,7 +249,10 @@
             window.location.href = REDIRECT_URI;
         }
 
-        window.onload = handleCallback;
+        window.onload = () => {
+            document.getElementById('display-redirect-uri').textContent = REDIRECT_URI;
+            handleCallback();
+        };
     </script>
 </body>
 </html>

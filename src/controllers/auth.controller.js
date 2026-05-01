@@ -24,13 +24,31 @@ export const authorizeClient = async (req, res) => {
     const sessionId = req.cookies?.sessionId;
 
     if (!sessionId) {
-    const clientOrigin = process.env.CLIENT_ORIGIN || `${req.protocol}://${req.get('host')}`;
-    const loginUrl = new URL(`${clientOrigin}/login`);
-    loginUrl.search = new URLSearchParams(req.query).toString();
-    return res.redirect(302, loginUrl.toString());
+        const clientOrigin = process.env.CLIENT_ORIGIN || `${req.protocol}://${req.get('host')}`;
+        const loginUrl = new URL(`${clientOrigin}/login`);
+        loginUrl.search = new URLSearchParams(req.query).toString();
+        return res.redirect(302, loginUrl.toString());
     }
 
-    throw new BadRequestError('Active session flow pending implementation', 'NOT_IMPLEMENTED');
+    // Validate the existing session
+    const session = await prisma.session.findUnique({
+        where: { id: sessionId }
+    });
+
+    if (!session || session.expiresAt < new Date()) {
+        // Invalid or expired session
+        res.clearCookie('sessionId');
+        const clientOrigin = process.env.CLIENT_ORIGIN || `${req.protocol}://${req.get('host')}`;
+        const loginUrl = new URL(`${clientOrigin}/login`);
+        loginUrl.search = new URLSearchParams(req.query).toString();
+        return res.redirect(302, loginUrl.toString());
+    }
+
+    // Session is valid, skip login and redirect directly to consent screen
+    const clientOrigin = process.env.CLIENT_ORIGIN || `${req.protocol}://${req.get('host')}`;
+    const consentUrl = new URL(`${clientOrigin}/consent`);
+    consentUrl.search = new URLSearchParams(req.query).toString();
+    return res.redirect(302, consentUrl.toString());
 }; 
 
 
