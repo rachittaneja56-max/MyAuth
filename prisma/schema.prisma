@@ -17,6 +17,7 @@ model User {
   authCodes    AuthCode[]
   consents     Consent[]
   refreshTokens RefreshToken[]
+  clients      Client[]
 }
 
 model Client {
@@ -25,6 +26,8 @@ model Client {
   clientSecretHash String     
   name             String     
   redirectUris     String[]   
+  userId           String
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt        DateTime   @default(now())
   authCodes        AuthCode[]
   consents         Consent[]

@@ -3,6 +3,25 @@ import crypto from 'crypto';
 import { prisma } from '../config/db.js';
 import { BadRequestError } from '../utils/errors.js';
 
+export const getClients = async (req, res) => {
+  const clients = await prisma.client.findMany({
+    where: { userId: req.user.id },
+    select: {
+      id: true,
+      clientId: true,
+      name: true,
+      redirectUris: true,
+      createdAt: true
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  res.status(200).json({
+    success: true,
+    data: clients
+  });
+};
+
 export const registerClient = async (req, res) => {
 
   const { name, redirectUris } = req.body;
@@ -16,6 +35,7 @@ export const registerClient = async (req, res) => {
       clientSecretHash,
       name,
       redirectUris,
+      userId: req.user.id
     },
   });
 

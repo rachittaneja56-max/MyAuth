@@ -14,6 +14,10 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 app.use(express.json());
+
+// Token endpoint must allow all origins for external OAuth clients (PKCE)
+app.use('/api/auth/token', cors());
+
 app.use(cors({
   origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
   credentials: true,

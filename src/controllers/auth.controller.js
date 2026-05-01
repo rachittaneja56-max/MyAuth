@@ -232,3 +232,14 @@ export const exchangeToken = async (req, res) => {
 
   throw new BadRequestError('Unsupported grant_type', 'UNSUPPORTED_GRANT_TYPE');
 };
+
+export const getMe = async (req, res) => {
+  res.status(200).json({
+    success: true,
+    user: {
+      id: req.user.id,
+      email: req.user.email,
+      name: req.user.name
+    }
+  });
+};

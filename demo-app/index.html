@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo App (Client)</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .card { background: #1e293b; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); width: 100%; max-w: 600px; border: 1px solid #334155; }
+        h1 { margin-top: 0; font-size: 1.5rem; }
+        button { background: #0ea5e9; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 1rem; width: 100%; }
+        button:hover { background: #0284c7; }
+        pre { background: #000; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; color: #a5b4fc; }
+        .hidden { display: none; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 5px; font-size: 0.875rem; color: #94a3b8; }
+        .input-group input { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: white; box-sizing: border-box; }
+        .token-box { background: #000; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; color: #a5b4fc; margin-bottom: 10px; border: 1px solid #334155;}
+        .token-header { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 5px; font-weight: 600; }
+        .profile-card { display: flex; align-items: center; gap: 15px; background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 20px;}
+        .avatar { width: 50px; height: 50px; background: #0ea5e9; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="card" id="login-card">
+        <h1>Welcome to Demo App</h1>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 20px;">
+            This is a completely separate frontend app that uses your deployed <strong>auth.rachittaneja.in</strong> service to log users in!
+        </p>
+
+        <div class="input-group">
+            <label>Your Client ID (Get this from auth.rachittaneja.in/register-app)</label>
+            <input type="text" id="clientId" placeholder="Enter Client ID">
+        </div>
+        <div class="input-group">
+            <label>Your Client Secret</label>
+            <input type="password" id="clientSecret" placeholder="Enter Client Secret">
+        </div>
+
+        <button onclick="login()">Log In with Rachit's Auth</button>
+    </div>
+
+    <div class="card hidden" id="result-card">
+        <h1>🎉 Successfully Logged In!</h1>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 20px;">We successfully exchanged the PKCE auth code for these real JWT tokens:</p>
+        
+        <div id="profile-container" class="hidden profile-card">
+            <div class="avatar" id="avatar-letter">?</div>
+            <div>
+                <h3 id="profile-name" style="margin: 0; font-size: 1.1rem; color: white;"></h3>
+                <p id="profile-email" style="margin: 5px 0 0 0; font-size: 0.85rem; color: #94a3b8;"></p>
+            </div>
+        </div>
+
+        <div id="tokens-container">
+            <pre id="tokens" class="token-box">Exchanging code for tokens...\nWait...</pre>
+        </div>
+        
+        <button onclick="logout()" style="background: #ef4444; margin-top: 15px;">Log Out / Start Over</button>
+    </div>
+
+    <script>
+        const AUTH_SERVER = 'https://auth.rachittaneja.in';
+        const REDIRECT_URI = window.location.origin; 
+
+        function generateRandomString(length) {
+            const array = new Uint32Array(Math.ceil(length / 2));
+            window.crypto.getRandomValues(array);
+            return Array.from(array, dec => ('0' + dec.toString(16)).substr(-2)).join('').substr(0, length);
+        }
+
+        async function generateCodeChallenge(codeVerifier) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(codeVerifier);
+            const digest = await window.crypto.subtle.digest('SHA-256', data);
+            
+            return btoa(String.fromCharCode.apply(null, new Uint8Array(digest)))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/, '');
+        }
+
+        async function login() {
+            const clientId = document.getElementById('clientId').value;
+            const clientSecret = document.getElementById('clientSecret').value;
+
+            if (!clientId || !clientSecret) {
+                alert("Please enter both Client ID and Client Secret!");
+                return;
+            }
+
+            localStorage.setItem('demo_client_id', clientId);
+            localStorage.setItem('demo_client_secret', clientSecret);
+
+            const codeVerifier = generateRandomString(43);
+            localStorage.setItem('pkce_verifier', codeVerifier);
+            
+            const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+            const authUrl = new URL(`${AUTH_SERVER}/api/auth/authorize`);
+            authUrl.searchParams.append('client_id', clientId);
+            authUrl.searchParams.append('redirect_uri', REDIRECT_URI);
+            authUrl.searchParams.append('response_type', 'code');
+            authUrl.searchParams.append('code_challenge', codeChallenge);
+            authUrl.searchParams.append('code_challenge_method', 'S256');
+
+            window.location.href = authUrl.toString();
+        }
+
+        async function handleCallback() {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            
+            if (code) {
+                document.getElementById('login-card').classList.add('hidden');
+                document.getElementById('result-card').classList.remove('hidden');
+                document.getElementById('tokens').textContent = "Exchanging code for tokens...\nWait...";
+
+                const codeVerifier = localStorage.getItem('pkce_verifier');
+                const clientId = localStorage.getItem('demo_client_id');
+                const clientSecret = localStorage.getItem('demo_client_secret');
+
+                try {
+                    const response = await fetch(`${AUTH_SERVER}/api/auth/token`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            client_id: clientId,
+                            client_secret: clientSecret,
+                            grant_type: 'authorization_code',
+                            code: code,
+                            redirect_uri: REDIRECT_URI,
+                            code_verifier: codeVerifier
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Token exchange failed');
+                    }
+
+                    const idTokenParts = data.id_token.split('.');
+                    const payload = JSON.parse(atob(idTokenParts[1]));
+
+                    document.getElementById('profile-container').classList.remove('hidden');
+                    document.getElementById('profile-name').textContent = payload.name || 'User';
+                    document.getElementById('profile-email').textContent = payload.email || '';
+                    document.getElementById('avatar-letter').textContent = (payload.name || payload.email || '?').charAt(0).toUpperCase();
+                    
+                    document.getElementById('tokens-container').innerHTML = `
+                        <div class="token-header">ID Token Payload (Decoded)</div>
+                        <pre class="token-box" style="color: #34d399">${JSON.stringify(payload, null, 2)}</pre>
+                        
+                        <div class="token-header">Access Token (Raw)</div>
+                        <pre class="token-box" style="word-break: break-all; white-space: pre-wrap;">${data.access_token}</pre>
+                    `;
+                    
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } catch (error) {
+                    document.getElementById('tokens-container').innerHTML = `<pre class="token-box" style="color: #ef4444">Error: ${error.message}</pre>`;
+                }
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = REDIRECT_URI;
+        }
+
+        window.onload = handleCallback;
+    </script>
+</body>
+</html>
