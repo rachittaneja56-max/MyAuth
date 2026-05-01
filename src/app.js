@@ -18,10 +18,17 @@ app.use(express.json());
 // Token endpoint must allow all origins for external OAuth clients (PKCE)
 app.use('/api/auth/token', cors());
 
-app.use(cors({
+const strictCors = cors({
   origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
   credentials: true,
-}));
+});
+
+app.use((req, res, next) => {
+  if (req.path === '/api/auth/token') {
+    return next();
+  }
+  strictCors(req, res, next);
+});
 app.use(cookieParser())
 
 app.use('/api/clients', clientRoutes);
