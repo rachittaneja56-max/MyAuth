@@ -6,7 +6,7 @@ export const authorizeQuerySchema = z.object({
   response_type: z.literal('code', { required_error: "response_type must be 'code'" }),
   state: z.string().optional(),
   code_challenge: z.string({ required_error: "code_challenge is required" })
-                   .min(43, "code_challenge length is invalid"),
+    .min(43, "code_challenge length is invalid"),
   code_challenge_method: z.enum(['S256', 'plain']).default('S256'),
   scope: z.string().optional(),
 });
@@ -35,15 +35,23 @@ export const consentSchema = z.object({
   code_challenge: z.string({ required_error: "code_challenge is required" }),
   code_challenge_method: z.string().default('S256'),
   state: z.string().optional(),
-  consent_given: z.boolean({ required_error: "consent_given must be true or false" }) 
+  consent_given: z.boolean({ required_error: "consent_given must be true or false" })
 });
 
-export const tokenSchema = z.object({
+const baseTokenSchema = z.object({
   client_id: z.string({ required_error: "client_id is required" }),
-  client_secret: z.string({ required_error: "client_secret is required" }), 
-  grant_type: z.enum(['authorization_code', 'refresh_token']),
-  code: z.string().optional(),
-  redirect_uri: z.string().url().optional(),
-  code_verifier: z.string().optional(),
-  refresh_token: z.string().optional()
+  client_secret: z.string({ required_error: "client_secret is required" })
 });
+
+export const tokenSchema = z.discriminatedUnion("grant_type", [
+  baseTokenSchema.extend({
+    grant_type: z.literal("authorization_code"),
+    code: z.string({ required_error: "code is required for authorization_code" }),
+    redirect_uri: z.string().url("redirect_uri must be a valid URL"),
+    code_verifier: z.string({ required_error: "code_verifier is required for PKCE" })
+  }),
+  baseTokenSchema.extend({
+    grant_type: z.literal("refresh_token"),
+    refresh_token: z.string({ required_error: "refresh_token is required" })
+  })
+]);

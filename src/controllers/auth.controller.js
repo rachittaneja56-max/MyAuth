@@ -239,7 +239,12 @@ export const submitConsent = async (req, res) => {
   });
 };
 
-const PRIVATE_KEY_PATH = path.resolve(process.cwd(), 'certs', 'private.pem');
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PRIVATE_KEY_PATH = path.resolve(__dirname, '../../certs/private.pem');
+
 let privateKey;
 try {
   if (process.env.PRIVATE_KEY_BASE64) {
