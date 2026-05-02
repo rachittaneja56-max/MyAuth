@@ -1,14 +1,17 @@
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import Home from './pages/Home';
 import RegisterClient from './pages/RegisterClient';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Consent from './pages/Consent';
+import Logout from './pages/Logout';
+import api from './utils/api';
 
-function Navbar() {
+function Navbar({ isAuthenticated }) {
   const location = useLocation();
   
-  const hideNavbarPaths = ['/login', '/signup', '/consent'];
+  const hideNavbarPaths = ['/login', '/signup', '/consent', '/logout'];
   if (hideNavbarPaths.includes(location.pathname)) {
     return null;
   }
@@ -16,9 +19,14 @@ function Navbar() {
   const links = [
     { to: '/', label: 'Home' },
     { to: '/register-app', label: 'Register app' },
-    { to: '/login', label: 'Sign in' },
-    { to: '/signup', label: 'Create account' },
   ];
+
+  if (isAuthenticated) {
+    links.push({ to: '/logout', label: 'Sign out' });
+  } else {
+    links.push({ to: '/login', label: 'Sign in' });
+    links.push({ to: '/signup', label: 'Create account' });
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-primary/80 backdrop-blur-xl border-b border-border">
@@ -48,15 +56,30 @@ function Navbar() {
 }
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        await api('/api/auth/me', { method: 'GET' });
+        setIsAuthenticated(true);
+      } catch (err) {
+        setIsAuthenticated(false);
+      }
+    };
+    checkAuth();
+  }, []);
+
   return (
     <BrowserRouter>
-      <Navbar />
+      <Navbar isAuthenticated={isAuthenticated} />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/register-app" element={<RegisterClient />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/consent" element={<Consent />} />
+        <Route path="/logout" element={<Logout />} />
       </Routes>
     </BrowserRouter>
   );
