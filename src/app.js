@@ -13,12 +13,11 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Required for secure cookies behind Render/Cloudflare load balancers
+
 app.set('trust proxy', 1);
 
 app.use(express.json());
 
-// These endpoints must allow all origins for external OAuth clients
 const openEndpoints = ['/api/auth/token', '/api/auth/logout'];
 openEndpoints.forEach(ep => app.use(ep, cors()));
 
@@ -38,9 +37,12 @@ app.use(cookieParser())
 app.use('/api/clients', clientRoutes);
 app.use('/', discoveryRoutes)
 app.use('/api/auth', authRoutes)
-
+app.get("/ping", (req, res) => {
+  res.status(200).send("pong");
+});
 const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDistPath));
+
 
 app.get(/^.*$/, (req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/.well-known')) {
