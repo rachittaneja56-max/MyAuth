@@ -57,7 +57,7 @@ export const authorizeClient = async (req, res) => {
     // True SSO: Skip consent screen and generate auth code
     const authCode = crypto.randomBytes(32).toString('hex');
     const codeExpiry = new Date(Date.now() + 5 * 60 * 1000);
-    
+
     await prisma.authCode.create({
       data: {
         code: authCode,
@@ -71,7 +71,7 @@ export const authorizeClient = async (req, res) => {
     const finalRedirectUrl = new URL(redirect_uri);
     finalRedirectUrl.searchParams.append('code', authCode);
     if (req.query.state) finalRedirectUrl.searchParams.append('state', req.query.state);
-    
+
     return res.redirect(302, finalRedirectUrl.toString());
   }
 
@@ -140,7 +140,6 @@ export const loginUser = async (req, res) => {
     });
   }
 
-  // Check if user has already granted consent to this client
   const existingConsent = await prisma.consent.findUnique({
     where: {
       userId_clientId: {
@@ -151,10 +150,9 @@ export const loginUser = async (req, res) => {
   });
 
   if (existingConsent) {
-    // True SSO: Skip consent screen and generate auth code
     const authCode = crypto.randomBytes(32).toString('hex');
     const codeExpiry = new Date(Date.now() + 5 * 60 * 1000);
-    
+
     await prisma.authCode.create({
       data: {
         code: authCode,
@@ -168,7 +166,7 @@ export const loginUser = async (req, res) => {
     const finalRedirectUrl = new URL(redirect_uri);
     finalRedirectUrl.searchParams.append('code', authCode);
     if (state) finalRedirectUrl.searchParams.append('state', state);
-    
+
     return res.status(200).json({
       success: true,
       message: 'Login successful, redirecting to app...',
@@ -203,8 +201,6 @@ export const submitConsent = async (req, res) => {
   }
   const authCode = crypto.randomBytes(32).toString('hex');
   const codeExpiry = new Date(Date.now() + 5 * 60 * 1000);
-  
-  // Save consent for future SSO logins
   await prisma.consent.upsert({
     where: {
       userId_clientId: {
@@ -212,7 +208,7 @@ export const submitConsent = async (req, res) => {
         clientId: client_id
       }
     },
-    update: {}, // Do nothing if it already exists
+    update: {},
     create: {
       userId: req.user.id,
       clientId: client_id,
@@ -239,12 +235,7 @@ export const submitConsent = async (req, res) => {
   });
 };
 
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const PRIVATE_KEY_PATH = path.resolve(__dirname, '../../certs/private.pem');
-
+const PRIVATE_KEY_PATH = path.resolve(process.cwd(), 'certs', 'private.pem');
 let privateKey;
 try {
   if (process.env.PRIVATE_KEY_BASE64) {
@@ -361,24 +352,20 @@ export const getMe = async (req, res) => {
 export const logoutUser = async (req, res) => {
   const { client_id, post_logout_redirect_uri } = req.query;
   const sessionId = req.cookies?.sessionId;
-
-  // Destroy the session in the database
   if (sessionId) {
     try {
       await prisma.session.delete({ where: { id: sessionId } });
     } catch (e) {
-      // Session may already be expired/deleted, that's fine
+
     }
   }
 
-  // Clear the cookie with matching flags
   res.clearCookie('sessionId', {
     httpOnly: true,
     secure: true,
     sameSite: 'none',
   });
 
-  // Validate and redirect to post_logout_redirect_uri if provided
   if (post_logout_redirect_uri && client_id) {
     const client = await prisma.client.findUnique({
       where: { clientId: client_id },
@@ -390,7 +377,6 @@ export const logoutUser = async (req, res) => {
     }
   }
 
-  // Fallback: redirect to IdP home page
   const clientOrigin = process.env.CLIENT_ORIGIN || `${req.protocol}://${req.get('host')}`;
   return res.redirect(302, clientOrigin);
 };
