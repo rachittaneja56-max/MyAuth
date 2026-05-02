@@ -31,7 +31,8 @@ export const authorizeClient = async (req, res) => {
   }
 
   const session = await prisma.session.findUnique({
-    where: { id: sessionId }
+    where: { id: sessionId },
+    include: { user: true }
   });
 
   if (!session || session.expiresAt < new Date()) {
@@ -42,6 +43,39 @@ export const authorizeClient = async (req, res) => {
     return res.redirect(302, loginUrl.toString());
   }
 
+  // Check if user has already granted consent to this client
+  const existingConsent = await prisma.consent.findUnique({
+    where: {
+      userId_clientId: {
+        userId: session.userId,
+        clientId: client_id
+      }
+    }
+  });
+
+  if (existingConsent) {
+    // True SSO: Skip consent screen and generate auth code
+    const authCode = crypto.randomBytes(32).toString('hex');
+    const codeExpiry = new Date(Date.now() + 5 * 60 * 1000);
+    
+    await prisma.authCode.create({
+      data: {
+        code: authCode,
+        clientId: client_id,
+        userId: session.userId,
+        codeChallenge: req.query.code_challenge,
+        expiresAt: codeExpiry
+      }
+    });
+
+    const finalRedirectUrl = new URL(redirect_uri);
+    finalRedirectUrl.searchParams.append('code', authCode);
+    if (req.query.state) finalRedirectUrl.searchParams.append('state', req.query.state);
+    
+    return res.redirect(302, finalRedirectUrl.toString());
+  }
+
+  // No consent yet, redirect to consent screen
   const clientOrigin = process.env.CLIENT_ORIGIN || `${req.protocol}://${req.get('host')}`;
   const consentUrl = new URL(`${clientOrigin}/consent`);
   consentUrl.search = new URLSearchParams(req.query).toString();
@@ -106,6 +140,43 @@ export const loginUser = async (req, res) => {
       redirectUrl: '/dashboard'
     });
   }
+
+  // Check if user has already granted consent to this client
+  const existingConsent = await prisma.consent.findUnique({
+    where: {
+      userId_clientId: {
+        userId: user.id,
+        clientId: client_id
+      }
+    }
+  });
+
+  if (existingConsent) {
+    // True SSO: Skip consent screen and generate auth code
+    const authCode = crypto.randomBytes(32).toString('hex');
+    const codeExpiry = new Date(Date.now() + 5 * 60 * 1000);
+    
+    await prisma.authCode.create({
+      data: {
+        code: authCode,
+        clientId: client_id,
+        userId: user.id,
+        codeChallenge: code_challenge,
+        expiresAt: codeExpiry
+      }
+    });
+
+    const finalRedirectUrl = new URL(redirect_uri);
+    finalRedirectUrl.searchParams.append('code', authCode);
+    if (state) finalRedirectUrl.searchParams.append('state', state);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Login successful, redirecting to app...',
+      redirectUrl: finalRedirectUrl.toString()
+    });
+  }
+
   const clientOrigin = process.env.CLIENT_ORIGIN || `${req.protocol}://${req.get('host')}`;
   const consentUrl = new URL(`${clientOrigin}/consent`);
   const params = { client_id, redirect_uri, response_type, code_challenge, code_challenge_method };
@@ -133,6 +204,23 @@ export const submitConsent = async (req, res) => {
   }
   const authCode = crypto.randomBytes(32).toString('hex');
   const codeExpiry = new Date(Date.now() + 5 * 60 * 1000);
+  
+  // Save consent for future SSO logins
+  await prisma.consent.upsert({
+    where: {
+      userId_clientId: {
+        userId: req.user.id,
+        clientId: client_id
+      }
+    },
+    update: {}, // Do nothing if it already exists
+    create: {
+      userId: req.user.id,
+      clientId: client_id,
+      scopes: ['openid', 'profile', 'email']
+    }
+  });
+
   await prisma.authCode.create({
     data: {
       code: authCode,
