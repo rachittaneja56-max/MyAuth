@@ -7,6 +7,12 @@ import Consent from './pages/Consent';
 
 function Navbar() {
   const location = useLocation();
+  
+  const hideNavbarPaths = ['/login', '/signup', '/consent'];
+  if (hideNavbarPaths.includes(location.pathname)) {
+    return null;
+  }
+
   const links = [
     { to: '/', label: 'Home' },
     { to: '/register-app', label: 'Register app' },
