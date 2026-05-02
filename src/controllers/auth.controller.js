@@ -92,10 +92,11 @@ export const loginUser = async (req, res) => {
       expiresAt: sessionExpiry,
     }
   });
+  const isProduction = process.env.NODE_ENV === 'production';
   res.cookie('sessionId', session.id, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     expires: sessionExpiry
   });
   if (!client_id) {
@@ -154,13 +155,15 @@ export const submitConsent = async (req, res) => {
 const PRIVATE_KEY_PATH = path.resolve(process.cwd(), 'certs', 'private.pem');
 let privateKey;
 try {
-  if (process.env.PRIVATE_KEY) {
+  if (process.env.PRIVATE_KEY_BASE64) {
+    privateKey = Buffer.from(process.env.PRIVATE_KEY_BASE64, 'base64').toString('utf8');
+  } else if (process.env.PRIVATE_KEY) {
     privateKey = process.env.PRIVATE_KEY.replace(/\\n/g, '\n');
   } else {
     privateKey = fs.readFileSync(PRIVATE_KEY_PATH, 'utf8');
   }
 } catch (error) {
-  console.error("CRITICAL: private.pem not found in certs/ folder and PRIVATE_KEY env var not set!");
+  console.error("CRITICAL: Private key not available! Set PRIVATE_KEY_BASE64 env var or place private.pem in certs/");
 }
 
 export const exchangeToken = async (req, res) => {
@@ -261,4 +264,42 @@ export const getMe = async (req, res) => {
       name: req.user.name
     }
   });
+};
+
+export const logoutUser = async (req, res) => {
+  const { client_id, post_logout_redirect_uri } = req.query;
+  const sessionId = req.cookies?.sessionId;
+
+  // Destroy the session in the database
+  if (sessionId) {
+    try {
+      await prisma.session.delete({ where: { id: sessionId } });
+    } catch (e) {
+      // Session may already be expired/deleted, that's fine
+    }
+  }
+
+  // Clear the cookie with matching flags
+  const isProduction = process.env.NODE_ENV === 'production';
+  res.clearCookie('sessionId', {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+  });
+
+  // Validate and redirect to post_logout_redirect_uri if provided
+  if (post_logout_redirect_uri && client_id) {
+    const client = await prisma.client.findUnique({
+      where: { clientId: client_id },
+      select: { redirectUris: true }
+    });
+
+    if (client && client.redirectUris.includes(post_logout_redirect_uri)) {
+      return res.redirect(302, post_logout_redirect_uri);
+    }
+  }
+
+  // Fallback: redirect to IdP home page
+  const clientOrigin = process.env.CLIENT_ORIGIN || `${req.protocol}://${req.get('host')}`;
+  return res.redirect(302, clientOrigin);
 };

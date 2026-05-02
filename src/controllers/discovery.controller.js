@@ -11,6 +11,7 @@ export const openIdRouter = (req, res) => {
     authorization_endpoint: `${baseUrl}/api/auth/authorize`,
     token_endpoint: `${baseUrl}/api/auth/token`,
     userinfo_endpoint: `${baseUrl}/api/auth/userinfo`,
+    end_session_endpoint: `${baseUrl}/api/auth/logout`,
     jwks_uri: `${baseUrl}/.well-known/jwks.json`,
     response_types_supported: ["code"],
     subject_types_supported: ["public"],
@@ -23,15 +24,23 @@ export const openIdRouter = (req, res) => {
 
 export const jwksRouter = (req, res) => {
   try {
-    const publicKeyPem = fs.readFileSync(path.resolve(process.cwd(), 'certs', 'public.pem'), 'utf8');
-    
+    let publicKeyPem, metadata;
 
-    const metadata = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'certs', 'key-metadata.json'), 'utf8'));
+    if (process.env.PUBLIC_KEY_BASE64) {
+      publicKeyPem = Buffer.from(process.env.PUBLIC_KEY_BASE64, 'base64').toString('utf8');
+    } else {
+      publicKeyPem = fs.readFileSync(path.resolve(process.cwd(), 'certs', 'public.pem'), 'utf8');
+    }
+
+    if (process.env.KEY_METADATA_BASE64) {
+      metadata = JSON.parse(Buffer.from(process.env.KEY_METADATA_BASE64, 'base64').toString('utf8'));
+    } else {
+      metadata = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'certs', 'key-metadata.json'), 'utf8'));
+    }
 
     const publicKeyObj = crypto.createPublicKey(publicKeyPem);
     const jwk = publicKeyObj.export({ format: 'jwk' });
 
-  
     res.json({
       keys: [{
         ...jwk,

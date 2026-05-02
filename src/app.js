@@ -13,10 +13,14 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Required for secure cookies behind Render/Cloudflare load balancers
+app.set('trust proxy', 1);
+
 app.use(express.json());
 
-// Token endpoint must allow all origins for external OAuth clients (PKCE)
-app.use('/api/auth/token', cors());
+// These endpoints must allow all origins for external OAuth clients
+const openEndpoints = ['/api/auth/token', '/api/auth/logout'];
+openEndpoints.forEach(ep => app.use(ep, cors()));
 
 const strictCors = cors({
   origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
@@ -24,7 +28,7 @@ const strictCors = cors({
 });
 
 app.use((req, res, next) => {
-  if (req.path === '/api/auth/token') {
+  if (openEndpoints.includes(req.path)) {
     return next();
   }
   strictCors(req, res, next);
