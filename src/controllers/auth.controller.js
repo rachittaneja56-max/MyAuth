@@ -235,13 +235,32 @@ export const submitConsent = async (req, res) => {
   });
 };
 
-const PRIVATE_KEY_PATH = path.resolve(process.cwd(), 'certs', 'private.pem');
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PRIVATE_KEY_PATH = path.resolve(__dirname, '../../certs', 'private.pem');
+
+function formatPrivateKey(key) {
+  if (!key) return key;
+  const header = '-----BEGIN PRIVATE KEY-----';
+  const footer = '-----END PRIVATE KEY-----';
+  const rsaHeader = '-----BEGIN RSA PRIVATE KEY-----';
+  const rsaFooter = '-----END RSA PRIVATE KEY-----';
+  let h = '', f = '';
+  if (key.includes(header)) { h = header; f = footer; }
+  else if (key.includes(rsaHeader)) { h = rsaHeader; f = rsaFooter; }
+  else return key;
+  const content = key.replace(h, '').replace(f, '').replace(/[\s\\n]+/g, '');
+  const chunks = content.match(/.{1,64}/g);
+  if (!chunks) return key;
+  return `${h}\n${chunks.join('\n')}\n${f}\n`;
+}
 let privateKey;
 try {
   if (process.env.PRIVATE_KEY_BASE64) {
-    privateKey = Buffer.from(process.env.PRIVATE_KEY_BASE64, 'base64').toString('utf8');
+    privateKey = formatPrivateKey(Buffer.from(process.env.PRIVATE_KEY_BASE64, 'base64').toString('utf8'));
   } else if (process.env.PRIVATE_KEY) {
-    privateKey = process.env.PRIVATE_KEY.replace(/\\n/g, '\n');
+    privateKey = formatPrivateKey(process.env.PRIVATE_KEY);
   } else {
     privateKey = fs.readFileSync(PRIVATE_KEY_PATH, 'utf8');
   }
