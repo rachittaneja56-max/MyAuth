@@ -40,6 +40,10 @@ app.use('/api/auth', authRoutes)
 app.get("/ping", (req, res) => {
   res.status(200).send("pong");
 });
+app.get("/authorize", (req, res) => {
+  const queryString = new URLSearchParams(req.query).toString();
+  res.redirect(302, `/api/auth/authorize?${queryString}`);
+});
 const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDistPath));
 

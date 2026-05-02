@@ -183,7 +183,7 @@
             
             const codeChallenge = await generateCodeChallenge(codeVerifier);
 
-            const authUrl = new URL(`${AUTH_SERVER}/api/auth/authorize`);
+            const authUrl = new URL(`${AUTH_SERVER}/authorize`);
             authUrl.searchParams.append('client_id', clientId);
             authUrl.searchParams.append('redirect_uri', REDIRECT_URI);
             authUrl.searchParams.append('response_type', 'code');
@@ -222,7 +222,7 @@
                     const data = await response.json();
                     
                     if (!response.ok) {
-                        throw new Error(data.message || 'Token exchange failed');
+                        throw new Error(data?.error?.message || data?.message || 'Token exchange failed');
                     }
 
                     const idTokenParts = data.id_token.split('.');
@@ -248,7 +248,6 @@
             const clientId = localStorage.getItem('demo_client_id');
             localStorage.clear();
 
-            // Redirect to IdP global logout — destroys server session and redirects back
             const logoutUrl = new URL(`${AUTH_SERVER}/api/auth/logout`);
             if (clientId) logoutUrl.searchParams.set('client_id', clientId);
             logoutUrl.searchParams.set('post_logout_redirect_uri', REDIRECT_URI);

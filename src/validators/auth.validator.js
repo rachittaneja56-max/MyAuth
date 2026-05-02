@@ -41,8 +41,9 @@ export const consentSchema = z.object({
 export const tokenSchema = z.object({
   client_id: z.string({ required_error: "client_id is required" }),
   client_secret: z.string({ required_error: "client_secret is required" }), 
-  grant_type: z.literal('authorization_code'),
-  code: z.string({ required_error: "code is required" }),
-  redirect_uri: z.string().url(),
-  code_verifier: z.string({ required_error: "code_verifier is required for PKCE" }) 
+  grant_type: z.enum(['authorization_code', 'refresh_token']),
+  code: z.string().optional(),
+  redirect_uri: z.string().url().optional(),
+  code_verifier: z.string().optional(),
+  refresh_token: z.string().optional()
 });

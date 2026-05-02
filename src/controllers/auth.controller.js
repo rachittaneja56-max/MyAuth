@@ -126,11 +126,10 @@ export const loginUser = async (req, res) => {
       expiresAt: sessionExpiry,
     }
   });
-  const isProduction = process.env.NODE_ENV === 'production';
   res.cookie('sessionId', session.id, {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    secure: true,
+    sameSite: 'none',
     expires: sessionExpiry
   });
   if (!client_id) {
@@ -368,11 +367,10 @@ export const logoutUser = async (req, res) => {
   }
 
   // Clear the cookie with matching flags
-  const isProduction = process.env.NODE_ENV === 'production';
   res.clearCookie('sessionId', {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    secure: true,
+    sameSite: 'none',
   });
 
   // Validate and redirect to post_logout_redirect_uri if provided

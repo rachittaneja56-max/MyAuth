@@ -76,10 +76,10 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/register-app" element={<RegisterClient />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/consent" element={<Consent />} />
-        <Route path="/logout" element={<Logout />} />
+        <Route path="/logout" element={<Logout setIsAuthenticated={setIsAuthenticated} />} />
       </Routes>
     </BrowserRouter>
   );

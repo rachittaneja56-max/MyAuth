@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 
-export default function Logout() {
+export default function Logout({ setIsAuthenticated }) {
   useEffect(() => {
-    // Redirect to the backend logout endpoint which handles clearing cookies/session
+    if (setIsAuthenticated) {
+      setIsAuthenticated(false);
+    }
     window.location.href = '/api/auth/logout';
-  }, []);
+  }, [setIsAuthenticated]);
 
   return (
     <div className="min-h-screen bg-primary flex items-center justify-center">

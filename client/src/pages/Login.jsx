@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import api from '../utils/api';
 
-export default function Login() {
+export default function Login({ setIsAuthenticated }) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -21,6 +21,9 @@ export default function Login() {
         body: { email, password, ...params },
       });
       const url = data.redirectUrl;
+      if (setIsAuthenticated) {
+        setIsAuthenticated(true);
+      }
       if (url.startsWith('http')) {
         window.location.href = url;
       } else {
