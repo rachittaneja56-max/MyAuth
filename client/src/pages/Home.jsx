@@ -14,7 +14,6 @@ export default function Home() {
       </div>
 
       <div className="relative max-w-5xl mx-auto px-6 pt-32 pb-20">
-        {/* Hero Section */}
         <div className="grid md:grid-cols-2 gap-12 items-start">
           <div>
             <p className="text-xs uppercase tracking-widest text-muted mb-4">OAuth 2.0 + OpenID Connect</p>
@@ -37,16 +36,16 @@ export default function Home() {
 
           <div className="space-y-4">
             <div className="bg-surface border border-border rounded-2xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-3">Try it practically</h2>
-              <p className="text-muted text-sm leading-relaxed mb-4">
-                Use the Register App page to create a client, then run the full OIDC authorization code flow end-to-end with PKCE.
-              </p>
+              <h2 className="text-lg font-semibold text-white mb-3">Test the Flow (Demo App)</h2>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-muted mb-5">
+                <li><Link to="/signup" className="text-glow hover:underline">Create an account</Link> or <Link to="/login" className="text-glow hover:underline">Sign in</Link>.</li>
+                <li>Go to <Link to="/register-app" className="text-glow hover:underline">Register App</Link> and create a client.</li>
+                <li>Copy your new <code className="text-white bg-white/10 px-1.5 py-0.5 rounded text-xs">client_id</code> and <code className="text-white bg-white/10 px-1.5 py-0.5 rounded text-xs">client_secret</code>.</li>
+                <li>Open the Demo App, enter the ID and Secret, and click Login!</li>
+              </ol>
               <div className="flex gap-3">
-                <Link to="/register-app" className="px-4 py-2 bg-white/10 border border-border text-white text-sm rounded-lg hover:bg-white/15 transition-colors">
-                  Try it live
-                </Link>
-                <a href="https://authdemo.rachittaneja.in" target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-white/10 border border-border text-white text-sm rounded-lg hover:bg-white/15 transition-colors">
-                  Demo App ↗
+                <a href="https://authdemo.rachittaneja.in" target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-white text-black font-medium text-sm rounded-lg hover:bg-gray-200 transition-colors">
+                  Open Demo App ↗
                 </a>
               </div>
             </div>
@@ -65,7 +64,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Integration Guide */}
         <div className="mt-24">
           <div className="mb-10">
             <p className="text-xs uppercase tracking-widest text-glow mb-3">Developer Guide</p>
@@ -75,7 +73,6 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Step 1 */}
           <div className="mb-10">
             <div className="flex items-start gap-4 mb-4">
               <div className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">1</div>
@@ -90,8 +87,6 @@ export default function Home() {
               </div>
             </div>
           </div>
-
-          {/* Step 2 */}
           <div className="mb-10">
             <div className="flex items-start gap-4 mb-4">
               <div className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">2</div>
@@ -136,7 +131,6 @@ async function loginWithRachitsAuth() {
             </div>
           </div>
 
-          {/* Step 3 */}
           <div className="mb-10">
             <div className="flex items-start gap-4 mb-4">
               <div className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">3</div>
@@ -177,8 +171,6 @@ if (code) {
               </div>
             </div>
           </div>
-
-          {/* Step 4 */}
           <div className="mb-10">
             <div className="flex items-start gap-4 mb-4">
               <div className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">4</div>
@@ -206,7 +198,6 @@ if (code) {
             </div>
           </div>
 
-          {/* Endpoints Reference */}
           <div className="mt-16">
             <h2 className="text-2xl font-bold text-white mb-6">Endpoints Reference</h2>
             <div className="bg-surface border border-border rounded-2xl overflow-hidden">
