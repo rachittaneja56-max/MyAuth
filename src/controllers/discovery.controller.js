@@ -29,16 +29,19 @@ export const jwksRouter = (req, res) => {
   try {
     let publicKeyPem, metadata;
 
-    if (process.env.PUBLIC_KEY_BASE64) {
+    const publicKeyPath = path.resolve(__dirname, '../../certs', 'public.pem');
+    const metadataPath = path.resolve(__dirname, '../../certs', 'key-metadata.json');
+
+    if (fs.existsSync(publicKeyPath)) {
+      publicKeyPem = fs.readFileSync(publicKeyPath, 'utf8');
+    } else if (process.env.PUBLIC_KEY_BASE64) {
       publicKeyPem = Buffer.from(process.env.PUBLIC_KEY_BASE64, 'base64').toString('utf8');
-    } else {
-      publicKeyPem = fs.readFileSync(path.resolve(__dirname, '../../certs', 'public.pem'), 'utf8');
     }
 
-    if (process.env.KEY_METADATA_BASE64) {
+    if (fs.existsSync(metadataPath)) {
+      metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+    } else if (process.env.KEY_METADATA_BASE64) {
       metadata = JSON.parse(Buffer.from(process.env.KEY_METADATA_BASE64, 'base64').toString('utf8'));
-    } else {
-      metadata = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../certs', 'key-metadata.json'), 'utf8'));
     }
 
     const publicKeyObj = crypto.createPublicKey(publicKeyPem);

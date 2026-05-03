@@ -264,23 +264,22 @@ function formatPrivateKey(key) {
 const PRIVATE_KEY_PATH = path.resolve(__dirname, '../../certs', 'private.pem');
 let privateKey;
 try {
-  if (process.env.PRIVATE_KEY_BASE64) {
+  if (fs.existsSync(PRIVATE_KEY_PATH)) {
+    privateKey = fs.readFileSync(PRIVATE_KEY_PATH, 'utf8');
+    console.log('[OIDC Boot] Private key loaded from', PRIVATE_KEY_PATH);
+  } else if (process.env.PRIVATE_KEY_BASE64) {
     privateKey = formatPrivateKey(Buffer.from(process.env.PRIVATE_KEY_BASE64, 'base64').toString('utf8'));
     console.log('[OIDC Boot] Private key loaded from PRIVATE_KEY_BASE64 env var');
   } else if (process.env.PRIVATE_KEY) {
     privateKey = formatPrivateKey(process.env.PRIVATE_KEY);
     console.log('[OIDC Boot] Private key loaded from PRIVATE_KEY env var');
   } else {
-    privateKey = fs.readFileSync(PRIVATE_KEY_PATH, 'utf8');
-    console.log('[OIDC Boot] Private key loaded from', PRIVATE_KEY_PATH);
+    throw new Error('No private key found! Place private.pem in certs/ or set PRIVATE_KEY_BASE64 env var.');
   }
-  console.log('[OIDC Boot] Key starts with:', privateKey?.substring(0, 40));
-  console.log('[OIDC Boot] Key length:', privateKey?.length, 'chars');
   const testToken = jwt.sign({ test: true }, privateKey, { algorithm: 'RS256' });
   console.log('[OIDC Boot] Self-test JWT sign OK');
 } catch (error) {
   console.error("[OIDC Boot] CRITICAL: Private key failed!", error.message);
-  console.error("[OIDC Boot] Key preview:", privateKey?.substring(0, 80));
 }
 
 export const exchangeToken = async (req, res) => {
