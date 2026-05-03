@@ -274,8 +274,13 @@ try {
     privateKey = fs.readFileSync(PRIVATE_KEY_PATH, 'utf8');
     console.log('[OIDC Boot] Private key loaded from', PRIVATE_KEY_PATH);
   }
+  console.log('[OIDC Boot] Key starts with:', privateKey?.substring(0, 40));
+  console.log('[OIDC Boot] Key length:', privateKey?.length, 'chars');
+  const testToken = jwt.sign({ test: true }, privateKey, { algorithm: 'RS256' });
+  console.log('[OIDC Boot] Self-test JWT sign OK');
 } catch (error) {
-  console.error("[OIDC Boot] CRITICAL: Failed to load private key!", error.message, error.stack);
+  console.error("[OIDC Boot] CRITICAL: Private key failed!", error.message);
+  console.error("[OIDC Boot] Key preview:", privateKey?.substring(0, 80));
 }
 
 export const exchangeToken = async (req, res) => {
