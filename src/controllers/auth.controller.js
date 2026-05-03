@@ -144,7 +144,7 @@ export const loginUser = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Logged in successfully',
-      redirectUrl: '/dashboard'
+      redirectUrl: '/'
     });
   }
 
@@ -252,7 +252,7 @@ function formatPrivateKey(key) {
   ];
   for (const { h, f } of headers) {
     if (key.includes(h)) {
-      const body = key.replace(h, '').replace(f, '').replace(/[\s\\n]+/g, '');
+      const body = key.replace(h, '').replace(f, '').replace(/\s+/g, '').replace(/\\n/g, '');
       const chunks = body.match(/.{1,64}/g);
       if (!chunks) return key;
       return `${h}\n${chunks.join('\n')}\n${f}\n`;

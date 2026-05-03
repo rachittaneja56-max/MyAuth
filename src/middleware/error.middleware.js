@@ -19,7 +19,7 @@ export const errorHandler = (err, req, res, next) => {
     success: false,
     error: {
       code: code,
-      message: message,
+      message: err.message || message,
       stack: isProduction ? undefined : err.stack,
     }
   });
