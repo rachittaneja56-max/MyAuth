@@ -1,6 +1,14 @@
 import { prisma } from '../config/db.js';
 import { UnauthorizedError } from '../utils/errors.js';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax',
+};
+
 export const requireAuth = async (req, res, next) => {
   try {
     const sessionId = req.cookies?.sessionId;
@@ -15,7 +23,7 @@ export const requireAuth = async (req, res, next) => {
     });
 
     if (!session || session.expiresAt < new Date()) {
-      res.clearCookie('sessionId');
+      res.clearCookie('sessionId', COOKIE_OPTIONS);
       throw new UnauthorizedError('Session expired or invalid.', 'UNAUTHORIZED');
     }
 
@@ -24,6 +32,7 @@ export const requireAuth = async (req, res, next) => {
 
     next();
   } catch (error) {
+    console.error("[OIDC requireAuth] Auth check failed:", error.message);
     next(error);
   }
 };

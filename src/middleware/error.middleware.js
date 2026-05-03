@@ -10,15 +10,17 @@ export const errorHandler = (err, req, res, next) => {
     message = err.message;
     code = err.code;
   } else {
-    console.error("UNEXPECTED BUG:", err);
+    console.error("[OIDC Unhandled Error]:", err.message, err.stack);
   }
+
+  const isProduction = process.env.NODE_ENV === 'production';
 
   res.status(statusCode).json({
     success: false,
     error: {
       code: code,
-      message: err.message || message,
-      stack: err.stack,
+      message: message,
+      stack: isProduction ? undefined : err.stack,
     }
   });
 };

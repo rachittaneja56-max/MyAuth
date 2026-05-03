@@ -2,9 +2,22 @@ import { prisma } from '../config/db.js';
 import { BadRequestError, UnauthorizedError } from '../utils/errors.js';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax',
+};
+
 export const authorizeClient = async (req, res) => {
   const { client_id, redirect_uri } = req.query;
 
@@ -36,14 +49,13 @@ export const authorizeClient = async (req, res) => {
   });
 
   if (!session || session.expiresAt < new Date()) {
-    res.clearCookie('sessionId');
+    res.clearCookie('sessionId', COOKIE_OPTIONS);
     const clientOrigin = process.env.CLIENT_ORIGIN || `${req.protocol}://${req.get('host')}`;
     const loginUrl = new URL(`${clientOrigin}/login`);
     loginUrl.search = new URLSearchParams(req.query).toString();
     return res.redirect(302, loginUrl.toString());
   }
 
-  // Check if user has already granted consent to this client
   const existingConsent = await prisma.consent.findUnique({
     where: {
       userId_clientId: {
@@ -54,7 +66,6 @@ export const authorizeClient = async (req, res) => {
   });
 
   if (existingConsent) {
-    // True SSO: Skip consent screen and generate auth code
     const authCode = crypto.randomBytes(32).toString('hex');
     const codeExpiry = new Date(Date.now() + 5 * 60 * 1000);
     
@@ -75,7 +86,6 @@ export const authorizeClient = async (req, res) => {
     return res.redirect(302, finalRedirectUrl.toString());
   }
 
-  // No consent yet, redirect to consent screen
   const clientOrigin = process.env.CLIENT_ORIGIN || `${req.protocol}://${req.get('host')}`;
   const consentUrl = new URL(`${clientOrigin}/consent`);
   consentUrl.search = new URLSearchParams(req.query).toString();
@@ -126,11 +136,8 @@ export const loginUser = async (req, res) => {
       expiresAt: sessionExpiry,
     }
   });
-  const isProduction = process.env.NODE_ENV === 'production';
   res.cookie('sessionId', session.id, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    ...COOKIE_OPTIONS,
     expires: sessionExpiry
   });
   if (!client_id) {
@@ -141,7 +148,6 @@ export const loginUser = async (req, res) => {
     });
   }
 
-  // Check if user has already granted consent to this client
   const existingConsent = await prisma.consent.findUnique({
     where: {
       userId_clientId: {
@@ -152,7 +158,6 @@ export const loginUser = async (req, res) => {
   });
 
   if (existingConsent) {
-    // True SSO: Skip consent screen and generate auth code
     const authCode = crypto.randomBytes(32).toString('hex');
     const codeExpiry = new Date(Date.now() + 5 * 60 * 1000);
     
@@ -205,7 +210,6 @@ export const submitConsent = async (req, res) => {
   const authCode = crypto.randomBytes(32).toString('hex');
   const codeExpiry = new Date(Date.now() + 5 * 60 * 1000);
   
-  // Save consent for future SSO logins
   await prisma.consent.upsert({
     where: {
       userId_clientId: {
@@ -213,7 +217,7 @@ export const submitConsent = async (req, res) => {
         clientId: client_id
       }
     },
-    update: {}, // Do nothing if it already exists
+    update: {},
     create: {
       userId: req.user.id,
       clientId: client_id,
@@ -240,18 +244,38 @@ export const submitConsent = async (req, res) => {
   });
 };
 
-const PRIVATE_KEY_PATH = path.resolve(process.cwd(), 'certs', 'private.pem');
+function formatPrivateKey(key) {
+  if (!key) return key;
+  const headers = [
+    { h: '-----BEGIN PRIVATE KEY-----', f: '-----END PRIVATE KEY-----' },
+    { h: '-----BEGIN RSA PRIVATE KEY-----', f: '-----END RSA PRIVATE KEY-----' },
+  ];
+  for (const { h, f } of headers) {
+    if (key.includes(h)) {
+      const body = key.replace(h, '').replace(f, '').replace(/[\s\\n]+/g, '');
+      const chunks = body.match(/.{1,64}/g);
+      if (!chunks) return key;
+      return `${h}\n${chunks.join('\n')}\n${f}\n`;
+    }
+  }
+  return key;
+}
+
+const PRIVATE_KEY_PATH = path.resolve(__dirname, '../../certs', 'private.pem');
 let privateKey;
 try {
   if (process.env.PRIVATE_KEY_BASE64) {
-    privateKey = Buffer.from(process.env.PRIVATE_KEY_BASE64, 'base64').toString('utf8');
+    privateKey = formatPrivateKey(Buffer.from(process.env.PRIVATE_KEY_BASE64, 'base64').toString('utf8'));
+    console.log('[OIDC Boot] Private key loaded from PRIVATE_KEY_BASE64 env var');
   } else if (process.env.PRIVATE_KEY) {
-    privateKey = process.env.PRIVATE_KEY.replace(/\\n/g, '\n');
+    privateKey = formatPrivateKey(process.env.PRIVATE_KEY);
+    console.log('[OIDC Boot] Private key loaded from PRIVATE_KEY env var');
   } else {
     privateKey = fs.readFileSync(PRIVATE_KEY_PATH, 'utf8');
+    console.log('[OIDC Boot] Private key loaded from', PRIVATE_KEY_PATH);
   }
 } catch (error) {
-  console.error("CRITICAL: Private key not available! Set PRIVATE_KEY_BASE64 env var or place private.pem in certs/");
+  console.error("[OIDC Boot] CRITICAL: Failed to load private key!", error.message, error.stack);
 }
 
 export const exchangeToken = async (req, res) => {
@@ -358,24 +382,16 @@ export const logoutUser = async (req, res) => {
   const { client_id, post_logout_redirect_uri } = req.query;
   const sessionId = req.cookies?.sessionId;
 
-  // Destroy the session in the database
   if (sessionId) {
     try {
       await prisma.session.delete({ where: { id: sessionId } });
     } catch (e) {
-      // Session may already be expired/deleted, that's fine
+      console.error("[OIDC logoutUser] Session delete failed (may already be expired):", e.message);
     }
   }
 
-  // Clear the cookie with matching flags
-  const isProduction = process.env.NODE_ENV === 'production';
-  res.clearCookie('sessionId', {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-  });
+  res.clearCookie('sessionId', COOKIE_OPTIONS);
 
-  // Validate and redirect to post_logout_redirect_uri if provided
   if (post_logout_redirect_uri && client_id) {
     const client = await prisma.client.findUnique({
       where: { clientId: client_id },
@@ -387,7 +403,6 @@ export const logoutUser = async (req, res) => {
     }
   }
 
-  // Fallback: redirect to IdP home page
   const clientOrigin = process.env.CLIENT_ORIGIN || `${req.protocol}://${req.get('host')}`;
   return res.redirect(302, clientOrigin);
 };

@@ -1,7 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { fileURLToPath } from 'url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const openIdRouter = (req, res) => {
   const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
@@ -29,13 +32,13 @@ export const jwksRouter = (req, res) => {
     if (process.env.PUBLIC_KEY_BASE64) {
       publicKeyPem = Buffer.from(process.env.PUBLIC_KEY_BASE64, 'base64').toString('utf8');
     } else {
-      publicKeyPem = fs.readFileSync(path.resolve(process.cwd(), 'certs', 'public.pem'), 'utf8');
+      publicKeyPem = fs.readFileSync(path.resolve(__dirname, '../../certs', 'public.pem'), 'utf8');
     }
 
     if (process.env.KEY_METADATA_BASE64) {
       metadata = JSON.parse(Buffer.from(process.env.KEY_METADATA_BASE64, 'base64').toString('utf8'));
     } else {
-      metadata = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'certs', 'key-metadata.json'), 'utf8'));
+      metadata = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../certs', 'key-metadata.json'), 'utf8'));
     }
 
     const publicKeyObj = crypto.createPublicKey(publicKeyPem);
@@ -50,7 +53,7 @@ export const jwksRouter = (req, res) => {
       }]
     });
   } catch (error) {
-    console.error("JWKS Error:", error);
+    console.error("[OIDC JWKS] Failed to load public keys:", error.message, error.stack);
     res.status(500).json({ error: 'Failed to load public keys. Ensure keys are generated.' });
   }
 }
