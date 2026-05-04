@@ -282,6 +282,57 @@ try {
   console.error("[OIDC Boot] CRITICAL: Private key failed!", error.message);
 }
 
+let publicKey;
+const PUBLIC_KEY_PATH = path.resolve(__dirname, '../../certs', 'public.pem');
+try {
+  if (fs.existsSync(PUBLIC_KEY_PATH)) {
+    publicKey = fs.readFileSync(PUBLIC_KEY_PATH, 'utf8');
+    console.log('[OIDC Boot] Public key loaded from', PUBLIC_KEY_PATH);
+  } else if (process.env.PUBLIC_KEY_BASE64) {
+    publicKey = Buffer.from(process.env.PUBLIC_KEY_BASE64, 'base64').toString('utf8');
+    console.log('[OIDC Boot] Public key loaded from PUBLIC_KEY_BASE64 env var');
+  } else if (privateKey) {
+    publicKey = crypto.createPublicKey(privateKey).export({ type: 'spki', format: 'pem' });
+    console.log('[OIDC Boot] Public key derived from private key');
+  }
+} catch (error) {
+  console.error("[OIDC Boot] Failed to load public key!", error.message);
+}
+
+const getBearerToken = (req) => {
+  const authHeader = req.headers?.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new UnauthorizedError('Authorization header missing or invalid', 'INVALID_TOKEN');
+  }
+  return authHeader.slice(7);
+};
+
+export const userInfo = async (req, res) => {
+  const token = getBearerToken(req);
+
+  let decodedToken;
+  try {
+    decodedToken = jwt.verify(token, publicKey || privateKey, { algorithms: ['RS256'] });
+  } catch (error) {
+    throw new UnauthorizedError('Invalid or expired access token', 'INVALID_TOKEN');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: decodedToken.sub },
+    select: { id: true, email: true, name: true }
+  });
+
+  if (!user) {
+    throw new UnauthorizedError('User not found', 'INVALID_TOKEN');
+  }
+
+  return res.status(200).json({
+    sub: user.id,
+    email: user.email,
+    name: user.name,
+  });
+};
+
 export const exchangeToken = async (req, res) => {
   const { client_id, client_secret, grant_type } = req.body;
 
