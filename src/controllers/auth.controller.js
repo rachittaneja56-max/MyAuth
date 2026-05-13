@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import { sendSuccess } from '../utils/apiResponse.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,7 +24,7 @@ export const authorizeClient = async (req, res) => {
 
   const client = await prisma.client.findUnique({
     where: { clientId: client_id },
-    select: { redirectUris: true }
+    select: { redirectUris: true },
   });
 
   if (!client) {
@@ -45,7 +46,11 @@ export const authorizeClient = async (req, res) => {
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
-    include: { user: true }
+    select: {
+      id: true,
+      userId: true,
+      expiresAt: true,
+    },
   });
 
   if (!session || session.expiresAt < new Date()) {
@@ -60,29 +65,29 @@ export const authorizeClient = async (req, res) => {
     where: {
       userId_clientId: {
         userId: session.userId,
-        clientId: client_id
-      }
-    }
+        clientId: client_id,
+      },
+    },
   });
 
   if (existingConsent) {
     const authCode = crypto.randomBytes(32).toString('hex');
     const codeExpiry = new Date(Date.now() + 5 * 60 * 1000);
-    
+
     await prisma.authCode.create({
       data: {
         code: authCode,
         clientId: client_id,
         userId: session.userId,
         codeChallenge: req.query.code_challenge,
-        expiresAt: codeExpiry
-      }
+        expiresAt: codeExpiry,
+      },
     });
 
     const finalRedirectUrl = new URL(redirect_uri);
     finalRedirectUrl.searchParams.append('code', authCode);
     if (req.query.state) finalRedirectUrl.searchParams.append('state', req.query.state);
-    
+
     return res.redirect(302, finalRedirectUrl.toString());
   }
 
@@ -92,10 +97,12 @@ export const authorizeClient = async (req, res) => {
   return res.redirect(302, consentUrl.toString());
 };
 
-
 export const signupUser = async (req, res) => {
   const { email, password, name } = req.body;
-  const existingUser = await prisma.user.findUnique({ where: { email } });
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
   if (existingUser) {
     throw new BadRequestError('User with this email already exists', 'USER_EXISTS');
   }
@@ -106,20 +113,22 @@ export const signupUser = async (req, res) => {
       passwordHash,
       name,
     },
-    select: { id: true, email: true, name: true }
+    select: { id: true, email: true, name: true },
   });
 
-  res.status(201).json({
-    success: true,
+  return sendSuccess(res, 201, {
     message: 'User created successfully. Please log in.',
-    data: newUser
+    data: newUser,
   });
 };
 
-
 export const loginUser = async (req, res) => {
-  const { email, password, client_id, redirect_uri, response_type, code_challenge, code_challenge_method, state } = req.body;
-  const user = await prisma.user.findUnique({ where: { email } });
+  const { email, password, client_id, redirect_uri, response_type, code_challenge, code_challenge_method, state } =
+    req.body;
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, email: true, name: true, passwordHash: true },
+  });
   if (!user) {
     throw new UnauthorizedError('Invalid email or password', 'INVALID_CREDENTIALS');
   }
@@ -128,23 +137,21 @@ export const loginUser = async (req, res) => {
     throw new UnauthorizedError('Invalid email or password', 'INVALID_CREDENTIALS');
   }
 
-
   const sessionExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const session = await prisma.session.create({
     data: {
       userId: user.id,
       expiresAt: sessionExpiry,
-    }
+    },
   });
   res.cookie('sessionId', session.id, {
     ...COOKIE_OPTIONS,
-    expires: sessionExpiry
+    expires: sessionExpiry,
   });
   if (!client_id) {
-    return res.status(200).json({
-      success: true,
+    return sendSuccess(res, 200, {
       message: 'Logged in successfully',
-      redirectUrl: '/'
+      data: { redirectUrl: '/' },
     });
   }
 
@@ -152,33 +159,32 @@ export const loginUser = async (req, res) => {
     where: {
       userId_clientId: {
         userId: user.id,
-        clientId: client_id
-      }
-    }
+        clientId: client_id,
+      },
+    },
   });
 
   if (existingConsent) {
     const authCode = crypto.randomBytes(32).toString('hex');
     const codeExpiry = new Date(Date.now() + 5 * 60 * 1000);
-    
+
     await prisma.authCode.create({
       data: {
         code: authCode,
         clientId: client_id,
         userId: user.id,
         codeChallenge: code_challenge,
-        expiresAt: codeExpiry
-      }
+        expiresAt: codeExpiry,
+      },
     });
 
     const finalRedirectUrl = new URL(redirect_uri);
     finalRedirectUrl.searchParams.append('code', authCode);
     if (state) finalRedirectUrl.searchParams.append('state', state);
-    
-    return res.status(200).json({
-      success: true,
+
+    return sendSuccess(res, 200, {
       message: 'Login successful, redirecting to app...',
-      redirectUrl: finalRedirectUrl.toString()
+      data: { redirectUrl: finalRedirectUrl.toString() },
     });
   }
 
@@ -187,42 +193,41 @@ export const loginUser = async (req, res) => {
   const params = { client_id, redirect_uri, response_type, code_challenge, code_challenge_method };
   if (state) params.state = state;
   consentUrl.search = new URLSearchParams(params).toString();
-  return res.status(200).json({
-    success: true,
+  return sendSuccess(res, 200, {
     message: 'Login successful, redirecting to consent...',
-    redirectUrl: consentUrl.toString()
+    data: { redirectUrl: consentUrl.toString() },
   });
 };
 
 export const submitConsent = async (req, res) => {
-  const { client_id, redirect_uri, response_type, code_challenge, code_challenge_method, state, consent_given } = req.body;
+  const { client_id, redirect_uri, response_type, code_challenge, code_challenge_method, state, consent_given } =
+    req.body;
 
   if (!consent_given) {
     const denyUrl = new URL(redirect_uri);
     denyUrl.searchParams.append('error', 'access_denied');
     if (state) denyUrl.searchParams.append('state', state);
-    return res.status(200).json({
-      success: true,
+    return sendSuccess(res, 200, {
       message: 'User denied access.',
-      redirectUrl: denyUrl.toString()
+      data: { redirectUrl: denyUrl.toString() },
     });
   }
   const authCode = crypto.randomBytes(32).toString('hex');
   const codeExpiry = new Date(Date.now() + 5 * 60 * 1000);
-  
+
   await prisma.consent.upsert({
     where: {
       userId_clientId: {
         userId: req.user.id,
-        clientId: client_id
-      }
+        clientId: client_id,
+      },
     },
     update: {},
     create: {
       userId: req.user.id,
       clientId: client_id,
-      scopes: ['openid', 'profile', 'email']
-    }
+      scopes: ['openid', 'profile', 'email'],
+    },
   });
 
   await prisma.authCode.create({
@@ -231,16 +236,15 @@ export const submitConsent = async (req, res) => {
       clientId: client_id,
       userId: req.user.id,
       codeChallenge: code_challenge,
-      expiresAt: codeExpiry
-    }
+      expiresAt: codeExpiry,
+    },
   });
   const finalRedirectUrl = new URL(redirect_uri);
   finalRedirectUrl.searchParams.append('code', authCode);
   if (state) finalRedirectUrl.searchParams.append('state', state);
-  return res.status(200).json({
-    success: true,
+  return sendSuccess(res, 200, {
     message: 'Consent granted. Redirecting to client...',
-    redirectUrl: finalRedirectUrl.toString()
+    data: { redirectUrl: finalRedirectUrl.toString() },
   });
 };
 
@@ -276,10 +280,10 @@ try {
   } else {
     throw new Error('No private key found! Place private.pem in certs/ or set PRIVATE_KEY_BASE64 env var.');
   }
-  const testToken = jwt.sign({ test: true }, privateKey, { algorithm: 'RS256' });
+  jwt.sign({ test: true }, privateKey, { algorithm: 'RS256' });
   console.log('[OIDC Boot] Self-test JWT sign OK');
 } catch (error) {
-  console.error("[OIDC Boot] CRITICAL: Private key failed!", error.message);
+  console.error('[OIDC Boot] CRITICAL: Private key failed!', error.message);
 }
 
 let publicKey;
@@ -296,7 +300,7 @@ try {
     console.log('[OIDC Boot] Public key derived from private key');
   }
 } catch (error) {
-  console.error("[OIDC Boot] Failed to load public key!", error.message);
+  console.error('[OIDC Boot] Failed to load public key!', error.message);
 }
 
 const getBearerToken = (req) => {
@@ -313,13 +317,13 @@ export const userInfo = async (req, res) => {
   let decodedToken;
   try {
     decodedToken = jwt.verify(token, publicKey || privateKey, { algorithms: ['RS256'] });
-  } catch (error) {
+  } catch {
     throw new UnauthorizedError('Invalid or expired access token', 'INVALID_TOKEN');
   }
 
   const user = await prisma.user.findUnique({
     where: { id: decodedToken.sub },
-    select: { id: true, email: true, name: true }
+    select: { id: true, email: true, name: true },
   });
 
   if (!user) {
@@ -336,26 +340,27 @@ export const userInfo = async (req, res) => {
 export const exchangeToken = async (req, res) => {
   const { client_id, client_secret, grant_type } = req.body;
 
-
   const client = await prisma.client.findUnique({ where: { clientId: client_id } });
   if (!client) throw new UnauthorizedError('Invalid client credentials', 'INVALID_CLIENT');
 
   const isClientValid = await bcrypt.compare(client_secret, client.clientSecretHash);
   if (!isClientValid) throw new UnauthorizedError('Invalid client credentials', 'INVALID_CLIENT');
 
-
   if (grant_type === 'authorization_code') {
     const { code, redirect_uri, code_verifier } = req.body;
 
     const authCodeRecord = await prisma.authCode.findUnique({
       where: { code },
-      include: { user: true }
+      include: {
+        user: {
+          select: { email: true, name: true },
+        },
+      },
     });
 
     if (!authCodeRecord || authCodeRecord.expiresAt < new Date()) {
       throw new BadRequestError('Invalid or expired authorization code', 'INVALID_GRANT');
     }
-
 
     const hashedVerifier = crypto.createHash('sha256').update(code_verifier).digest('base64url');
     if (hashedVerifier !== authCodeRecord.codeChallenge) {
@@ -379,7 +384,7 @@ export const exchangeToken = async (req, res) => {
         userId: authCodeRecord.userId,
         clientId: client_id,
         expiresAt: refreshExpiry,
-      }
+      },
     });
 
     return res.status(200).json({
@@ -387,17 +392,15 @@ export const exchangeToken = async (req, res) => {
       token_type: 'Bearer',
       expires_in: 900,
       refresh_token: refreshTokenString,
-      id_token: idToken
+      id_token: idToken,
     });
   }
-
 
   if (grant_type === 'refresh_token') {
     const { refresh_token } = req.body;
 
     const dbToken = await prisma.refreshToken.findUnique({
       where: { token: refresh_token },
-      include: { user: true }
     });
 
     if (!dbToken || dbToken.isRevoked || dbToken.expiresAt < new Date()) {
@@ -409,13 +412,13 @@ export const exchangeToken = async (req, res) => {
       algorithm: 'RS256',
       expiresIn: '15m',
       audience: client_id,
-      issuer
+      issuer,
     });
 
     return res.status(200).json({
       access_token: newAccessToken,
       token_type: 'Bearer',
-      expires_in: 900
+      expires_in: 900,
     });
   }
 
@@ -423,13 +426,12 @@ export const exchangeToken = async (req, res) => {
 };
 
 export const getMe = async (req, res) => {
-  res.status(200).json({
-    success: true,
-    user: {
+  return sendSuccess(res, 200, {
+    data: {
       id: req.user.id,
       email: req.user.email,
-      name: req.user.name
-    }
+      name: req.user.name,
+    },
   });
 };
 
@@ -441,7 +443,7 @@ export const logoutUser = async (req, res) => {
     try {
       await prisma.session.delete({ where: { id: sessionId } });
     } catch (e) {
-      console.error("[OIDC logoutUser] Session delete failed (may already be expired):", e.message);
+      console.error('[OIDC logoutUser] Session delete failed (may already be expired):', e.message);
     }
   }
 
@@ -450,7 +452,7 @@ export const logoutUser = async (req, res) => {
   if (post_logout_redirect_uri && client_id) {
     const client = await prisma.client.findUnique({
       where: { clientId: client_id },
-      select: { redirectUris: true }
+      select: { redirectUris: true },
     });
 
     if (client && client.redirectUris.includes(post_logout_redirect_uri)) {

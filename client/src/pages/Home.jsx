@@ -12,7 +12,6 @@ export default function Home() {
 
       <div className="relative max-w-5xl mx-auto px-6 pt-32 pb-20">
         
-        {/* HERO SECTION */}
         <div className="grid md:grid-cols-2 gap-12 items-start mb-24">
           <div>
             <div className="flex items-center gap-3 mb-4">
@@ -75,7 +74,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* DEVELOPER GUIDE */}
         <div className="mb-24">
           <div className="mb-12 border-b border-border pb-8">
             <h2 className="text-3xl font-bold text-white mb-4">Integration Guide</h2>
@@ -86,7 +84,6 @@ export default function Home() {
 
           <div className="space-y-16">
             
-            {/* Step 1 */}
             <div className="flex flex-col md:flex-row gap-6 md:gap-12">
               <div className="md:w-1/3 shrink-0">
                 <div className="flex items-center gap-3 mb-3">
@@ -113,7 +110,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Step 2 */}
             <div className="flex flex-col md:flex-row gap-6 md:gap-12">
               <div className="md:w-1/3 shrink-0">
                 <div className="flex items-center gap-3 mb-3">
@@ -146,7 +142,6 @@ async function generateChallenge(verifier) {
               </div>
             </div>
 
-            {/* Step 3 */}
             <div className="flex flex-col md:flex-row gap-6 md:gap-12">
               <div className="md:w-1/3 shrink-0">
                 <div className="flex items-center gap-3 mb-3">
@@ -187,7 +182,6 @@ async function generateChallenge(verifier) {
               </div>
             </div>
 
-            {/* Step 4 */}
             <div className="flex flex-col md:flex-row gap-6 md:gap-12">
               <div className="md:w-1/3 shrink-0">
                 <div className="flex items-center gap-3 mb-3">
@@ -241,7 +235,6 @@ if (code) {
               </div>
             </div>
 
-            {/* Step 5 */}
             <div className="flex flex-col md:flex-row gap-6 md:gap-12">
               <div className="md:w-1/3 shrink-0">
                 <div className="flex items-center gap-3 mb-3">
@@ -275,7 +268,6 @@ if (code) {
           </div>
         </div>
 
-        {/* API REFERENCE */}
         <div className="mb-24">
           <div className="mb-8 border-b border-border pb-8">
             <h2 className="text-3xl font-bold text-white mb-2">Endpoint Reference</h2>
@@ -315,7 +307,6 @@ if (code) {
           </div>
         </div>
 
-        {/* TOKENS & ERRORS GRID */}
         <div className="grid md:grid-cols-2 gap-12 mb-24">
           <div>
             <h2 className="text-2xl font-bold text-white mb-6">Token Reference</h2>
@@ -360,7 +351,6 @@ if (code) {
           </div>
         </div>
 
-        {/* SECURITY & ARCHITECTURE */}
         <div className="bg-surface border border-border rounded-2xl p-8 lg:p-12 mb-12">
           <h2 className="text-2xl font-bold text-white mb-6">Security Architecture</h2>
           

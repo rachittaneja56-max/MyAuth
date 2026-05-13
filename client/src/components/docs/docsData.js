@@ -279,7 +279,7 @@ ${BASE}/api/auth/logout?\\
   -H "Content-Type: application/json" \\
   -b "sessionId=YOUR_SESSION_ID" \\
   -d '{"name":"My App","redirectUris":["https://yourapp.com/callback"]}'`,
-      notes: '⚠️ SAVE YOUR CLIENT SECRET NOW. It is shown exactly once and cannot be recovered. If you lose it, you must register a new client.',
+      notes: ' SAVE YOUR CLIENT SECRET NOW. It is shown exactly once and cannot be recovered. If you lose it, you must register a new client.',
     },
     {
       method: 'GET',

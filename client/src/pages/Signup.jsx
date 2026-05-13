@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import api from '../utils/api';
+import api, { ApiError, errorAlertClass } from '../utils/api';
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -8,12 +8,12 @@ export default function Signup() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [surfaceError, setSurfaceError] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setSurfaceError(null);
     setLoading(true);
     try {
       await api('/api/auth/signup', {
@@ -22,7 +22,8 @@ export default function Signup() {
       });
       navigate('/login' + location.search);
     } catch (err) {
-      setError(err.message);
+      const msg = err instanceof Error ? err.message : 'Sign up failed';
+      setSurfaceError(err instanceof ApiError ? err : new ApiError(msg));
     } finally {
       setLoading(false);
     }
@@ -55,7 +56,11 @@ export default function Signup() {
             <label htmlFor="password" className="block text-sm text-muted mb-1.5">Password</label>
             <input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full px-3.5 py-2.5 bg-primary border border-border rounded-lg text-white placeholder-gray-600 text-sm focus:outline-none focus:border-gray-500 transition-colors" />
           </div>
-          {error && <div className="px-3.5 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>}
+          {surfaceError && (
+            <div className={errorAlertClass(surfaceError)}>
+              {surfaceError.message}
+            </div>
+          )}
           <button type="submit" disabled={loading} className="w-full py-2.5 bg-white text-black text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             {loading ? 'Creating account…' : 'Create account'}
           </button>

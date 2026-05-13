@@ -19,7 +19,15 @@ export const requireAuth = async (req, res, next) => {
 
     const session = await prisma.session.findUnique({
       where: { id: sessionId },
-      include: { user: true }
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
     });
 
     if (!session || session.expiresAt < new Date()) {
@@ -32,7 +40,6 @@ export const requireAuth = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error("[OIDC requireAuth] Auth check failed:", error.message);
     next(error);
   }
 };

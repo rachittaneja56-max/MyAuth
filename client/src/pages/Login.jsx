@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import api from '../utils/api';
+import api, { ApiError, errorAlertClass } from '../utils/api';
 
 export default function Login({ setIsAuthenticated }) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [surfaceError, setSurfaceError] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setSurfaceError(null);
     setLoading(true);
     try {
       const params = Object.fromEntries(searchParams.entries());
@@ -20,17 +20,18 @@ export default function Login({ setIsAuthenticated }) {
         method: 'POST',
         body: { email, password, ...params },
       });
-      const url = data.redirectUrl;
+      const url = data.data?.redirectUrl ?? data.redirectUrl;
       if (setIsAuthenticated) {
         setIsAuthenticated(true);
       }
-      if (url.startsWith('http')) {
+      if (url && url.startsWith('http')) {
         window.location.href = url;
-      } else {
+      } else if (url) {
         navigate(url);
       }
     } catch (err) {
-      setError(err.message);
+      const msg = err instanceof Error ? err.message : 'Sign in failed';
+      setSurfaceError(err instanceof ApiError ? err : new ApiError(msg));
     } finally {
       setLoading(false);
     }
@@ -58,7 +59,11 @@ export default function Login({ setIsAuthenticated }) {
             <label htmlFor="password" className="block text-sm text-muted mb-1.5">Password</label>
             <input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full px-3.5 py-2.5 bg-primary border border-border rounded-lg text-white placeholder-gray-600 text-sm focus:outline-none focus:border-gray-500 transition-colors" />
           </div>
-          {error && <div className="px-3.5 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>}
+          {surfaceError && (
+            <div className={errorAlertClass(surfaceError)}>
+              {surfaceError.message}
+            </div>
+          )}
           <button type="submit" disabled={loading} className="w-full py-2.5 bg-white text-black text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             {loading ? 'Signing in…' : 'Continue'}
           </button>

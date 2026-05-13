@@ -67,7 +67,7 @@ export default function EndpointCard({ method, path, description, auth, params, 
 
           {notes && (
             <div className="px-4 py-3 bg-glow/5 border border-glow/20 rounded-lg">
-              <p className="text-xs text-glow leading-relaxed">💡 {notes}</p>
+              <p className="text-xs text-glow leading-relaxed"> {notes}</p>
             </div>
           )}
         </div>

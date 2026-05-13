@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import api from '../utils/api';
+import api, { ApiError, errorAlertClass } from '../utils/api';
 
 export default function Consent() {
   const [searchParams] = useSearchParams();
-  const [error, setError] = useState('');
+  const [surfaceError, setSurfaceError] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleConsent = async (consentGiven) => {
-    setError('');
+    setSurfaceError(null);
     setLoading(true);
     try {
       const params = Object.fromEntries(searchParams.entries());
@@ -16,9 +16,13 @@ export default function Consent() {
         method: 'POST',
         body: { ...params, consent_given: consentGiven },
       });
-      window.location.href = data.redirectUrl;
+      const url = data.data?.redirectUrl ?? data.redirectUrl;
+      if (url) {
+        window.location.href = url;
+      }
     } catch (err) {
-      setError(err.message);
+      const msg = err instanceof Error ? err.message : 'Something went wrong';
+      setSurfaceError(err instanceof ApiError ? err : new ApiError(msg));
       setLoading(false);
     }
   };
@@ -37,8 +41,10 @@ export default function Consent() {
           <p className="text-muted text-sm mt-2">An application is requesting access to your account.</p>
         </div>
 
-        {error && (
-          <div className="mb-6 px-3.5 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>
+        {surfaceError && (
+          <div className={`mb-6 ${errorAlertClass(surfaceError)}`}>
+            {surfaceError.message}
+          </div>
         )}
 
         <div className="flex gap-3">
